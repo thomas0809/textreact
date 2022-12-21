@@ -62,6 +62,10 @@ https://drive.google.com/uc?id=1gFV2KdVKaLCTeb3nrzopyYHXbM0G_cr_    --->    outp
 https://drive.google.com/uc?id=1L7GnmESYwU7IFGnhMHD2qQH38Z2-kY1c    --->    outputs/Parrot_train_in_Reaxy_TotalSyn_Condition.zip
 
 https://drive.google.com/uc?id=1hS-mHXJWF_NN4rA-UlrB0OGvSZt6ti_I    --->    outputs/Parrot_train_in_USPTO_Suzuki_Condition.zip
+
+https://drive.google.com/uc?id=1bVB89ByGkYjiUtbvEcp1mgwmoKy5Ka2b    --->    outputs/best_rcm_model_pretrain.zip
+
+https://drive.google.com/uc?id=1DmHILXSOhUuAzqF0JmRTx1EcOOQ7Bm5O    --->    outputs/best_mlm_model_pretrain.zip
 ```
 
 
