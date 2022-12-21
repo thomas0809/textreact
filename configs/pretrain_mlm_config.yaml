@@ -16,6 +16,7 @@ config:
   pad_token_id: 0
   type_vocab_size: 2
 evaluate_during_training: true
+use_multiprocessing: false
 fp16: false
 learning_rate: 0.0001
 manual_seed: 42
