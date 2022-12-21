@@ -18,9 +18,9 @@ file_list = [
     ('https://drive.google.com/uc?id=1uEqpkF4tPTlLIPdTyWJdXows7hKQbAAc', os.path.join(work_dir, 'dataset', 'pretrain_data.zip')),
     ('https://drive.google.com/uc?id=1gFV2KdVKaLCTeb3nrzopyYHXbM0G_cr_', os.path.join(work_dir, 'outputs', 'Parrot_train_in_USPTO_Condition_enhance.zip')),
     ('https://drive.google.com/uc?id=1L7GnmESYwU7IFGnhMHD2qQH38Z2-kY1c', os.path.join(work_dir, 'outputs', 'Parrot_train_in_Reaxy_TotalSyn_Condition.zip')),    
-    ('https://drive.google.com/uc?id=1hS-mHXJWF_NN4rA-UlrB0OGvSZt6ti_I', os.path.join(work_dir, 'outputs', 'Parrot_train_in_USPTO_Suzuki_Condition.zip'))
-    ('https://drive.google.com/uc?id=1bVB89ByGkYjiUtbvEcp1mgwmoKy5Ka2b', os.path.join(work_dir, 'outputs', 'best_rcm_model_pretrain.zip'))
-    ('https://drive.google.com/uc?id=1DmHILXSOhUuAzqF0JmRTx1EcOOQ7Bm5O', os.path.join(work_dir, 'outputs', 'best_mlm_model_pretrain.zip'))
+    ('https://drive.google.com/uc?id=1hS-mHXJWF_NN4rA-UlrB0OGvSZt6ti_I', os.path.join(work_dir, 'outputs', 'Parrot_train_in_USPTO_Suzuki_Condition.zip')),
+    ('https://drive.google.com/uc?id=1bVB89ByGkYjiUtbvEcp1mgwmoKy5Ka2b', os.path.join(work_dir, 'outputs', 'best_rcm_model_pretrain.zip')),
+    ('https://drive.google.com/uc?id=1DmHILXSOhUuAzqF0JmRTx1EcOOQ7Bm5O', os.path.join(work_dir, 'outputs', 'best_mlm_model_pretrain.zip')),
 ]
 
 
