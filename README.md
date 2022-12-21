@@ -109,12 +109,17 @@ Support three input methods<br>
 
 #### Draw
 <br>
+
 ![web_interface_draw](./paper_data/figure/web_interface_draw.png)
+
 #### Reaction SMILES
 <br>
+
 ![web_interface_str](./paper_data/figure/web_interface_str.png)
+
 #### TXT Files
 <br>
+
 ![web_interface_upfiles](./paper_data/figure/web_interface_upfiles.png)
 
 ## Reproduce the results
