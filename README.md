@@ -108,13 +108,13 @@ Open the browser, enter: http://127.0.0.1:8000 and you will see the following in
 Support three input methods<br>
 
 #### Draw
-<br><br>
+<br>
 ![web_interface_draw](./paper_data/figure/web_interface_draw.png)
 #### Reaction SMILES
-<br><br>
+<br>
 ![web_interface_str](./paper_data/figure/web_interface_str.png)
 #### TXT Files
-<br><br>
+<br>
 ![web_interface_upfiles](./paper_data/figure/web_interface_upfiles.png)
 
 ## Reproduce the results
