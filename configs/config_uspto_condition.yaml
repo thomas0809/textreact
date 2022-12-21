@@ -3,6 +3,7 @@ model_args:
   evaluate_during_training: true
   fp16: false
   gradient_accumulation_steps: 1
+  use_multiprocessing: false
   learning_rate: 2.0e-04
   manual_seed: 42
   max_seq_length: 512

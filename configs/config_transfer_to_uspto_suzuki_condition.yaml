@@ -2,6 +2,7 @@
 model_args:
   evaluate_during_training: true
   fp16: false
+  use_multiprocessing: false
   gradient_accumulation_steps: 1
   learning_rate: 2.0e-04
   manual_seed: 42
