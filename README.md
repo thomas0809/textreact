@@ -104,14 +104,17 @@ cd web_app
 python app.py
 ```
 Open the browser, enter: http://127.0.0.1:8000 and you will see the following interface:<br><br>
-![web_interface](./paper_data/figure/web_interface.png)
-Support three input methods
+![web_interface](./paper_data/figure/web_interface.png)<br>
+Support three input methods<br>
 
 #### Draw
+<br><br>
 ![web_interface_draw](./paper_data/figure/web_interface_draw.png)
 #### Reaction SMILES
+<br><br>
 ![web_interface_str](./paper_data/figure/web_interface_str.png)
 #### TXT Files
+<br><br>
 ![web_interface_upfiles](./paper_data/figure/web_interface_upfiles.png)
 
 ## Reproduce the results
