@@ -51,7 +51,7 @@ You can use Parrot to predict suitable catalysts, solvents and reagents, and tem
 ```
 python preprocess_script/download_data.py
 ```
-The links correspond to the paths of the documents as follows:
+The links correspond to the paths of the zip files as follows:
 ```
 https://drive.google.com/uc?id=1da6JD0CPC4dCuWSy0cOn5g9uby7jL9PI    --->    dataset/source_dataset/USPTO_condition_final.zip
 
