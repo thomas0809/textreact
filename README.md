@@ -51,6 +51,20 @@ You can use Parrot to predict suitable catalysts, solvents and reagents, and tem
 ```
 python preprocess_script/download_data.py
 ```
+The links correspond to the paths of the documents as follows:
+```
+https://drive.google.com/uc?id=1da6JD0CPC4dCuWSy0cOn5g9uby7jL9PI    --->    dataset/source_dataset/USPTO_condition_final.zip
+
+https://drive.google.com/uc?id=1uEqpkF4tPTlLIPdTyWJdXows7hKQbAAc    --->    dataset/pretrain_data.zip
+
+https://drive.google.com/uc?id=1gFV2KdVKaLCTeb3nrzopyYHXbM0G_cr_    --->    outputs/Parrot_train_in_USPTO_Condition_enhance.zip
+
+https://drive.google.com/uc?id=1L7GnmESYwU7IFGnhMHD2qQH38Z2-kY1c    --->    outputs/Parrot_train_in_Reaxy_TotalSyn_Condition.zip
+
+https://drive.google.com/uc?id=1hS-mHXJWF_NN4rA-UlrB0OGvSZt6ti_I    --->    outputs/Parrot_train_in_USPTO_Suzuki_Condition.zip
+```
+
+
 We provide two usage methods, one is to use the command line, and the other is through the web interface.
 ### Command
 Then prepare the txt file containing the SMILES of the responses you want to predict, and enter the following command:<br>
