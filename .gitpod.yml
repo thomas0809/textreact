@@ -5,7 +5,11 @@ tasks:
       bash /tmp/Minconda3.sh -b -p /workspace/miniconda3 &&
       echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
       source ~/.bashrc
-    command: conda env create -n parrot_env -f envs_cpu.yaml
+    command: >
+      conda env create -n parrot_env -f envs_cpu.yaml && 
+      source activate parrot_env &&
+      cd web_app &&
+      python app.py
 
 # List the ports to expose. Learn more https://www.gitpod.io/docs/config-ports/
 ports:
