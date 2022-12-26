@@ -6,6 +6,7 @@ Implementation of reaction condition prediction with Parrot<br><br>
 ## Contents
 
 - [Publication](#publication)
+- [Quickly Start From Gitpod](#quickly-start-from-gitpod)
 - [OS Requirements](#os-requirements)
 - [Python Dependencies](#python-dependencies)
 - [Installation Guide](#installation-guide)
@@ -21,6 +22,10 @@ Implementation of reaction condition prediction with Parrot<br><br>
 
 ## Publication
 Parrot: An Interpretable Pretrained Reaction Condition Transformer
+
+## Quickly Start From Gitpod
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/wangxr0526/Parrot)
+
 
 ## OS Requirements
 This repository has been tested on **Linux**  operating systems.
