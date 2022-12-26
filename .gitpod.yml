@@ -8,6 +8,7 @@ tasks:
     command: >
       conda env create -n parrot_env -f envs_cpu.yaml && 
       source activate parrot_env &&
+      python preprocess_script/download_data.py &&
       cd web_app &&
       python app.py
 
