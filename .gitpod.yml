@@ -4,12 +4,16 @@ tasks:
       wget https://repo.anaconda.com/miniconda/Miniconda3-py310_22.11.1-1-Linux-x86_64.sh -O /tmp/Minconda3.sh &&
       bash /tmp/Minconda3.sh -b -p /workspace/miniconda3 &&
       echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
-      source ~/.bashrc
-    command: >
+      source ~/.bashrc &&
       conda env create -n parrot_env -f envs_cpu.yaml && 
       source activate parrot_env &&
-      python preprocess_script/download_data.py &&
-      cd web_app &&
+      python preprocess_script/download_data.py
+
+  - command: >
+      echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
+      source ~/.bashrc &&
+      source activate parrot_env &&
+      cd /workspace/Parrot/web_app &&
       python app.py
 
 # List the ports to expose. Learn more https://www.gitpod.io/docs/config-ports/
