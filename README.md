@@ -21,7 +21,7 @@ Implementation of reaction condition prediction with Parrot<br><br>
     - [Transfer to USPTO-Suzuki-Condition](#5-transfer-to-uspto-suzuki-condition)
 
 ## Publication
-Parrot: An Interpretable Pretrained Reaction Condition Transformer
+Interpretable Reaction Condition Predictions with Standardized Open Reaction Condition Datasets
 
 ## Quickly Start From Gitpod
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/wangxr0526/Parrot)
