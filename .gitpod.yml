@@ -7,14 +7,11 @@ tasks:
       source ~/.bashrc &&
       conda env create -n parrot_env -f envs_cpu.yaml && 
       source activate parrot_env &&
-      python preprocess_script/download_data.py
+      /workspace/miniconda3/envs/parrot_env/bin/python preprocess_script/download_data.py
 
     command: >
-      echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
-      source ~/.bashrc &&
-      source activate parrot_env &&
       cd /workspace/Parrot/web_app &&
-      python app.py
+      /workspace/miniconda3/envs/parrot_env/bin/python app.py
 
 # List the ports to expose. Learn more https://www.gitpod.io/docs/config-ports/
 ports:
