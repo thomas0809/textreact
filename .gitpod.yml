@@ -9,7 +9,7 @@ tasks:
       source activate parrot_env &&
       python preprocess_script/download_data.py
 
-  - command: >
+    command: >
       echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
       source ~/.bashrc &&
       source activate parrot_env &&
