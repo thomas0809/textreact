@@ -6,7 +6,6 @@ tasks:
       echo "export PATH=/workspace/miniconda3/bin:$PATH" >> ~/.bashrc &&
       source ~/.bashrc &&
       conda env create -n parrot_env -f envs_cpu.yaml && 
-      source activate parrot_env &&
       /workspace/miniconda3/envs/parrot_env/bin/python preprocess_script/download_data.py
 
     command: >
