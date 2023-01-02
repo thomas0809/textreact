@@ -24,7 +24,8 @@ Implementation of reaction condition prediction with Parrot<br><br>
 Interpretable Reaction Condition Predictions with Standardized Open Reaction Condition Datasets
 
 ## Quickly Start From Gitpod
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/wangxr0526/Parrot)
+About 4 minutes.<br>
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/wangxr0526/Parrot) 
 
 
 ## OS Requirements
