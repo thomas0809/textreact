@@ -21,7 +21,7 @@ Implementation of reaction condition prediction with Parrot<br><br>
     - [Transfer to USPTO-Suzuki-Condition](#5-transfer-to-uspto-suzuki-condition)
 
 ## Publication
-Interpretable and General Reaction Condition Predictions with Standardized Open Reaction Condition Datasets
+General and Interpretable Reaction Condition Predictions with Standardized Open Reaction Condition Datasets
 
 ## Quickly Start From Gitpod
 About 4 minutes.<br>
