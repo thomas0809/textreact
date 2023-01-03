@@ -40,7 +40,7 @@ This repository has been tested on **Linux**  operating systems.
 
 ## Installation Guide
 Create a virtual environment to run the code of Parrot.<br>
-It is recommended to use conda to manage the virtual environment.The installation method for conda can be found [here](https://conda.io/projects/conda/en/stable/user-guide/install/linux.html#install-linux-silent).<br>
+It is recommended to use conda to manage the virtual environment.The installation method for conda can be found [here](https://conda.io/projects/conda/en/stable/user-guide/install/linux.html#installing-on-linux).<br>
 Make sure to install pytorch with the cuda version that fits your device.<br>
 This process usually takes few munites to complete.<br>
 ```
