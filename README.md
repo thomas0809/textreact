@@ -86,7 +86,7 @@ python inference.py --config_path path/to/config_file.yaml \
                     --output_path path/to/output.csv \
                     --num_workers NUM_WORKERS \
                     --inference_batch_size BATCH_SIZE \
-                    --gpu CUDA_ID
+                    --gpu CUDA_ID          # use cpu: CUDA_ID=-1
 ```
 For example, using Parrot predictions trained on the USPTO-Condition dataset, use the following command:<br>
 ```
