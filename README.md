@@ -1,4 +1,5 @@
 # Parrot
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg) <br>
 Implementation of reaction condition prediction with Parrot<br><br>
 ![Parrot](./paper_data/figure/main-graph%20abstract.png)
 
