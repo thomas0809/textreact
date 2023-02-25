@@ -3,16 +3,24 @@ import sys, csv, os
 import pickle as pkl
 import torch
 from torch.utils.data import DataLoader
+import wandb
 from dgl.data.utils import split_dataset, Subset
 from dataset import GraphDataset
 from util import collate_reaction_graphs
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
-parser.add_argument('--rtype', '-t', type=str, choices=['example', 'suzuki', 'cn', 'negishi', 'pkr'])
+# parser.add_argument('--rtype', '-t', type=str, choices=['example', 'suzuki', 'cn', 'negishi', 'pkr'])
+parser.add_argument('--rtype', '-t', type=str)
 parser.add_argument('--method', '-m', type=str, choices=['rxnfp', 'baseline', 'proposed'], default='proposed')
 parser.add_argument('--iterid', '-i', type=int, default=0)
 parser.add_argument('--mode', '-o', type=str, choices=['trn', 'tst'], default='trn')
+parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--patience', type=int, default=20)
+parser.add_argument('--bs', type=int, default=128)
+parser.add_argument('--weight_decay', type=float, default=1e-10)
+parser.add_argument('--val_every', type=int, default=1)
+parser.add_argument('--wandb', action='store_true')
 args = parser.parse_args()
 
 rtype = args.rtype
@@ -37,7 +45,7 @@ elif method == 'rxnfp':
     collate_fn = None
 
 random_state = 134 + iterid
-batch_size = 128
+batch_size = args.bs
 cuda = torch.device('cuda:0')
 
 if not os.path.exists('./model/'): os.makedirs('./model/')
@@ -74,7 +82,7 @@ if mode == 'trn':
     print('--- (trn) total no. conditions:', trndata.n_conditions)
     print('--- (trn) no. conditions per reaction (min/avg/max): %d/%.2f/%d'%(np.min(len_list), np.mean(len_list), np.max(len_list)))
 
-    trainer.training(trn_loader, val_loader)
+    trainer.training(trn_loader, val_loader, lr=args.lr, patience=args.patience, weight_decay=args.weight_decay, val_every=args.val_every)
     
 elif mode == 'tst':
     trainer.load()

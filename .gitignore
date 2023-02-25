@@ -1,0 +1,19 @@
+# vim swap files
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+# data
+*.pkl
+*.npz
+pistachio
+
+# checkpoints
+model/
+
+# profiles
+profile*
+
+# python
+__pycache__/

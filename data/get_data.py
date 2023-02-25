@@ -1,4 +1,6 @@
 import os, csv, time
+import argparse
+from collections import defaultdict
 import numpy as np
 import pickle as pkl
 from rdkit import Chem, RDConfig, rdBase, RDLogger
@@ -15,6 +17,15 @@ warnings.filterwarnings("ignore")
 def get_graph_data(data, keys, filename):
 
     chem_feature_factory = ChemicalFeatures.BuildFeatureFactory(os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef'))
+
+    # atom_dict = defaultdict(int)
+    # charge_dict = defaultdict(int)
+    # degree_dict = defaultdict(int)
+    # hybridization_dict = defaultdict(int)
+    # hydrogen_dict = defaultdict(int)
+    # valence_dict = defaultdict(int)
+    # ringsize_dict = defaultdict(int)
+    # bond_dict = defaultdict(int)
 
     def mol_to_graph(mol):
 
@@ -36,6 +47,25 @@ def get_graph_data(data, keys, filename):
         n_edge = mol.GetNumBonds() * 2
         
         D_list, A_list = _DA(mol)  
+        # atom_list = ['Ag','Al','As','B','Bi','Br','C','Cl','Co','Cr','Cu','F','Ge','H','I','In','K','Li','Mg','Mo','N','Na','O','P','Pd','S','Sb','Se','Si','Sn','Te','Zn']
+        # charge_list = [-1, 0, 1, 2, 0]
+        # degree_list = [1, 2, 3, 4, 5, 6, 0]
+        # hybridization_list = ['SP','SP2','SP3','SP3D','SP3D2','S','UNSPECIFIED']
+        # hydrogen_list = [1, 2, 3, 0]
+        # valence_list = [1, 2, 3, 4, 5, 6, 12, 0]
+        # ringsize_list = [3, 4, 5, 6, 7, 8]
+        # bond_list = ['SINGLE', 'DOUBLE', 'TRIPLE', 'AROMATIC']
+        # for a in mol.GetAtoms():
+            # atom_dict[a.GetSymbol()] += 1
+            # charge_dict[a.GetFormalCharge()] += 1
+            # degree_dict[a.GetDegree()] += 1
+            # hybridization_dict[str(a.GetHybridization())] += 1
+            # hydrogen_dict[a.GetTotalNumHs(includeNeighbors = True)] += 1
+            # valence_dict[a.GetTotalValence()] += 1
+        # for ring in mol.GetRingInfo().AtomRings():
+            # ringsize_dict[len(ring)] += 1
+        # for b in mol.GetBonds():
+            # bond_dict[str(b.GetBondType())] += 1
         atom_fea1 = np.eye(len(atom_list), dtype = bool)[[atom_list.index(a.GetSymbol()) for a in mol.GetAtoms()]]
         atom_fea2 = np.eye(len(charge_list), dtype = bool)[[charge_list.index(a.GetFormalCharge()) for a in mol.GetAtoms()]][:,:-1]
         atom_fea3 = np.eye(len(degree_list), dtype = bool)[[degree_list.index(a.GetDegree()) for a in mol.GetAtoms()]][:,:-1]
@@ -80,12 +110,16 @@ def get_graph_data(data, keys, filename):
         
         return g
     
-    atom_list = ['Ag','Al','As','B','Bi','Br','C','Cl','Co','Cr','Cu','F','Ge','H','I','In','K','Li','Mg','Mo','N','Na','O','P','Pd','S','Sb','Se','Si','Sn','Te','Zn']
-    charge_list = [-1, 0, 1, 2, 0]
+    # atom_list = ['Ag','Al','As','B','Bi','Br','C','Cl','Co','Cr','Cu','F','Ge','H','I','In','K','Li','Mg','Mo','N','Na','O','P','Pd','S','Sb','Se','Si','Sn','Te','Zn']
+    # atom_list = ['Ag', 'Al', 'As', 'Au', 'B', 'Bi', 'Br', 'C', 'Ca', 'Cl', 'Co', 'Cr', 'Cs', 'Cu', 'F', 'Fe', 'Ge', 'H', 'Hf', 'Hg', 'I', 'In', 'Ir', 'K', 'La', 'Li', 'Mg', 'Mn', 'Mo', 'N', 'Na', 'Ni', 'O', 'Os', 'P', 'Pb', 'Pd', 'Ru', 'S', 'Sb', 'Se', 'Si', 'Sm', 'Sn', 'Te', 'Ti', 'U', 'V', 'Y', 'Zn', 'Zr']
+    atom_list = ['Ag', 'Al', 'As', 'At', 'Au', 'B', 'Be', 'Bi', 'Br', 'C', 'Ca', 'Cl', 'Co', 'Cr', 'Cs', 'Cu', 'F', 'Fe', 'Ge', 'H', 'Hf', 'Hg', 'I', 'In', 'Ir', 'K', 'La', 'Li', 'Mg', 'Mn', 'Mo', 'N', 'Na', 'Ni', 'O', 'Os', 'P', 'Pb', 'Pd', 'Ru', 'S', 'Sb', 'Se', 'Si', 'Sm', 'Sn', 'Tb', 'Te', 'Ti', 'U', 'V', 'W', 'Y', 'Zn', 'Zr']
+    # charge_list = [-1, 0, 1, 2, 0]
+    charge_list = [-1, 0, 1, 2, 3]
     degree_list = [1, 2, 3, 4, 5, 6, 0]
     hybridization_list = ['SP','SP2','SP3','SP3D','SP3D2','S','UNSPECIFIED']
     hydrogen_list = [1, 2, 3, 0]
-    valence_list = [1, 2, 3, 4, 5, 6, 12, 0]
+    # valence_list = [1, 2, 3, 4, 5, 6, 12, 0]
+    valence_list = [1, 2, 3, 4, 5, 6, 7, 8, 12, 0]
     ringsize_list = [3, 4, 5, 6, 7, 8]
     bond_list = ['SINGLE', 'DOUBLE', 'TRIPLE', 'AROMATIC']
     
@@ -103,50 +137,89 @@ def get_graph_data(data, keys, filename):
     print('--- n_reactions: %d, reactant_max_cnt: %d, product_max_cnt: %d' %(len(keys), rmol_max_cnt, pmol_max_cnt)) 
 
     start_time = time.time()
+    num_err = 0
+    errors = []
     for i, rsmi in enumerate(keys):
     
         [reactants_smi, products_smi] = rsmi.split('>>')
         ys = data[rsmi]
 
         # processing reactants
-        reactants_smi_list = reactants_smi.split('.')
-        for _ in range(rmol_max_cnt - len(reactants_smi_list)): reactants_smi_list.append('')
-        for j, smi in enumerate(reactants_smi_list):
-            if smi == '':
-                rmol_graphs[j].append(dummy_graph())
-            else:
-                rmol = Chem.MolFromSmiles(smi)
-                rs = Chem.FindPotentialStereo(rmol)
-                for element in rs:
-                    if str(element.type) == 'Atom_Tetrahedral' and str(element.specified) == 'Specified': rmol.GetAtomWithIdx(element.centeredOn).SetProp('Chirality', str(element.descriptor))
-                    elif str(element.type) == 'Bond_Double' and str(element.specified) == 'Specified': rmol.GetBondWithIdx(element.centeredOn).SetProp('Stereochemistry', str(element.descriptor))
+        try:
+            rmols = [None for _ in range(rmol_max_cnt)]
+            reactants_smi_list = reactants_smi.split('.')
+            for _ in range(rmol_max_cnt - len(reactants_smi_list)): reactants_smi_list.append('')
+            if len(reactants_smi_list) > 2:
+                breakpoint()
+            for j, smi in enumerate(reactants_smi_list):
+                if smi == '':
+                    rmols[j] = dummy_graph()
+                else:
+                    rmol = Chem.MolFromSmiles(smi)
+                    rs = Chem.FindPotentialStereo(rmol)
+                    for element in rs:
+                        if str(element.type) == 'Atom_Tetrahedral' and str(element.specified) == 'Specified': rmol.GetAtomWithIdx(element.centeredOn).SetProp('Chirality', str(element.descriptor))
+                        elif str(element.type) == 'Bond_Double' and str(element.specified) == 'Specified': rmol.GetBondWithIdx(element.centeredOn).SetProp('Stereochemistry', str(element.descriptor))
 
-                rmol = Chem.RemoveHs(rmol)
-                rmol_graphs[j].append(mol_to_graph(rmol))
-                
-        # processing products
-        products_smi_list = products_smi.split('.')
-        for _ in range(pmol_max_cnt - len(products_smi_list)): products_smi_list.append('')
-        for j, smi in enumerate(products_smi_list):
-            if smi == '':
-                pmol_graphs[j].append(dummy_graph())
-            else: 
-                pmol = Chem.MolFromSmiles(smi)
-                ps = Chem.FindPotentialStereo(pmol)
-                for element in ps:
-                    if str(element.type) == 'Atom_Tetrahedral' and str(element.specified) == 'Specified': pmol.GetAtomWithIdx(element.centeredOn).SetProp('Chirality', str(element.descriptor))
-                    elif str(element.type) == 'Bond_Double' and str(element.specified) == 'Specified': pmol.GetBondWithIdx(element.centeredOn).SetProp('Stereochemistry', str(element.descriptor))
-                        
-                pmol = Chem.RemoveHs(pmol) 
-                pmol_graphs[j].append(mol_to_graph(pmol))
+                    rmols[j] = mol_to_graph(Chem.RemoveHs(rmol))
+                    
+            # processing products
+            pmols = [None for _ in range(pmol_max_cnt)]
+            products_smi_list = products_smi.split('.')
+            for _ in range(pmol_max_cnt - len(products_smi_list)): products_smi_list.append('')
+            for j, smi in enumerate(products_smi_list):
+                if smi == '':
+                    pmols[j] = dummy_graph()
+                else: 
+                    pmol = Chem.MolFromSmiles(smi)
+                    ps = Chem.FindPotentialStereo(pmol)
+                    for element in ps:
+                        if str(element.type) == 'Atom_Tetrahedral' and str(element.specified) == 'Specified': pmol.GetAtomWithIdx(element.centeredOn).SetProp('Chirality', str(element.descriptor))
+                        elif str(element.type) == 'Bond_Double' and str(element.specified) == 'Specified': pmol.GetBondWithIdx(element.centeredOn).SetProp('Stereochemistry', str(element.descriptor))
+                            
+                    pmols[j] = mol_to_graph(Chem.RemoveHs(pmol))
+            
+            for j, rmol in enumerate(rmols):
+                rmol_graphs[j].append(rmol)
+            for j, pmol in enumerate(pmols):
+                pmol_graphs[j].append(pmol)
         
-        reaction_dict['y'].append(ys)
-        reaction_dict['rsmi'].append(rsmi)
+            reaction_dict['y'].append(ys)
+            reaction_dict['rsmi'].append(rsmi)
+
+        except ValueError as e:
+            num_err += 1
+            errors.append(e)
     
         # monitoring
         if (i+1) % 10000 == 0:
             time_elapsed = (time.time() - start_time)/60
             print('--- %d/%d processed, %.2f min elapsed' %(i+1, len(keys), time_elapsed)) 
+            print('--- %d/%d (%.3f) errors' % (num_err, len(keys), num_err / len(keys)))
+            print('--- errors:')
+            print(errors)
+            # print(atom_dict)
+            # print(charge_dict)
+            # print(degree_dict)
+            # print(hybridization_dict)
+            # print(hydrogen_dict)
+            # print(valence_dict)
+            # print(ringsize_dict)
+            # print(bond_dict)
+
+    time_elapsed = (time.time() - start_time)/60
+    print('--- %d/%d processed, %.2f min elapsed' %(i+1, len(keys), time_elapsed)) 
+    print('--- %d/%d (%.3f) errors' % (num_err, len(keys), num_err / len(keys)))
+    print('--- errors:')
+    print(errors)
+    # print(atom_dict)
+    # print(charge_dict)
+    # print(degree_dict)
+    # print(hybridization_dict)
+    # print(hydrogen_dict)
+    # print(valence_dict)
+    # print(ringsize_dict)
+    # print(bond_dict)
 
     rmol_graphs = list(map(list, zip(*rmol_graphs)))
     pmol_graphs = list(map(list, zip(*pmol_graphs))) 
@@ -156,24 +229,29 @@ def get_graph_data(data, keys, filename):
         pkl.dump([rmol_graphs, pmol_graphs, reaction_dict['y'], reaction_dict['rsmi']], f)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--frac", type=float, default=1.0)
+    parser.add_argument("--rtype", required=True)
+    parser.add_argument("--split", choices=["trn", "tst"], required=True)
+    parser.add_argument("--clist", required=True)
 
-    rtype = 'example'
-    file_path = './data_%s.npz'%rtype
-    frac_trn = 0.8
+    args = parser.parse_args()
 
-    [reaction_dict, clist] = np.load(file_path, allow_pickle = True)['data']
+    file_path = './data_%s_%s.npz' % (args.rtype, args.split)
+
+    reaction_dict = np.load(file_path, allow_pickle = True)['data'].item()
+    clist = np.load(args.clist, allow_pickle = True)['data']
 
     np.random.seed(134)
     reaction_keys = np.array(list(reaction_dict.keys()))
-    reaction_keys = reaction_keys[np.random.permutation(len(reaction_keys))]
+    if args.frac != 1.:
+        reaction_keys = reaction_keys[np.random.permutation(len(reaction_keys))]
+        split_amnt = int(len(reaction_keys) * args.frac)
+        reaction_keys = reaction_keys[:split_amnt]
 
-    split_trn = int(len(reaction_keys) * frac_trn)
-    trn_keys, tst_keys = reaction_keys[:split_trn], reaction_keys[split_trn:]
-    print(file_path, len(reaction_keys), len(trn_keys), len(tst_keys))
-    print(clist)
+    print(file_path)
+    print(f"NUM REACTIONS: {len(reaction_keys)}")
+    print(f"NUM CONDITION MOLS: {len(clist)}")
     
-    filename = './data_dgl_%s_%s.pkl'%(rtype, 'trn')
-    get_graph_data(reaction_dict, trn_keys, filename)
-        
-    filename = './data_dgl_%s_%s.pkl'%(rtype, 'tst')
-    get_graph_data(reaction_dict, tst_keys, filename)
+    filename = './data_dgl_%s_%s.pkl' % (args.rtype, args.split)
+    get_graph_data(reaction_dict, reaction_keys, filename)

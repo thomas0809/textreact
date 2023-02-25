@@ -183,11 +183,11 @@ class Trainer:
         self.net.load_state_dict(torch.load(self.model_path)) 
         
                
-    def training(self, train_loader, val_loader, max_epochs = 500):
+    def training(self, train_loader, val_loader, max_epochs = 500, lr = 1e-3, patience = 20, weight_decay = 1e-10, val_every = 1):
 
         loss_fn = nn.BCEWithLogitsLoss(reduction = 'none')
-        optimizer = Adam(self.net.parameters(), lr = 1e-3, weight_decay = 1e-10)
-        lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=20, min_lr=1e-6, verbose=True)
+        optimizer = Adam(self.net.parameters(), lr = lr, weight_decay = weight_decay)
+        lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=patience, min_lr=1e-6, verbose=True)
     
         train_size = train_loader.dataset.__len__()
         val_size = val_loader.dataset.__len__()
@@ -196,7 +196,7 @@ class Trainer:
         best_macro_recall = 1.
         best_micro_recall = 1.
         
-        val_log = np.zeros(max_epochs)
+        val_log = np.zeros(max_epochs) + np.inf
         for epoch in range(max_epochs):
             
             # training
@@ -204,17 +204,17 @@ class Trainer:
             start_time = time.time()
             grad_norm_list = []
             for batchidx, batchdata in enumerate(train_loader):
-    
+
                 inputs_rmol = [b.to(self.cuda) for b in batchdata[:self.rmol_max_cnt]]
                 inputs_pmol = [b.to(self.cuda) for b in batchdata[self.rmol_max_cnt:self.rmol_max_cnt+self.pmol_max_cnt]]
-                
+
                 labels = batchdata[-1].to(self.cuda)
                 preds, mu, log_var = self.net(inputs_rmol, inputs_pmol, labels)
 
                 loss_bce = loss_fn(preds, labels).sum(axis = 1).mean()
                 loss_kld = - 0.5 * (1 + log_var - mu.pow(2) - log_var.exp()).sum(axis=1).mean()
                 loss = loss_bce + loss_kld
-    
+
                 optimizer.zero_grad()
                 loss.backward()
                 assert not torch.isnan(loss)
@@ -228,26 +228,27 @@ class Trainer:
                   %(epoch, optimizer.param_groups[-1]['lr'], train_size, train_size, train_loss, (time.time()-start_time)/60), np.max(grad_norm_list))
     
             # validation
-            start_time = time.time()
-            val_y_preds = self.inference(val_loader, n_sampling = 50)
-            
-            accuracy = np.mean([np.max([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
-            macro_recall = np.mean([np.mean([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
-            micro_recall = np.sum([np.sum([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))]) / np.sum([len(a) for a in val_y])
-            val_loss = 1 - (accuracy + macro_recall + micro_recall) / 3
-    
-            lr_scheduler.step(val_loss)
-            val_log[epoch] = val_loss
-    
-            print('--- validation at epoch %d, total processed %d, ACC %.3f/1.000, macR %.3f/%.3f, micR %.3f/%.3f, monitor %d, time elapsed(min) %.2f'
-                  %(epoch, val_size, accuracy, macro_recall, best_macro_recall, micro_recall, best_micro_recall, epoch - np.argmin(val_log[:epoch + 1]), (time.time()-start_time)/60))  
-    
-            # earlystopping
-            if np.argmin(val_log[:epoch + 1]) == epoch:
-                torch.save(self.net.state_dict(), self.model_path) 
-            
-            elif np.argmin(val_log[:epoch + 1]) <= epoch - 50:
-                break
+            if epoch % val_every == 0:
+                start_time = time.time()
+                val_y_preds = self.inference(val_loader, n_sampling = 50)
+                
+                accuracy = np.mean([np.max([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
+                macro_recall = np.mean([np.mean([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
+                micro_recall = np.sum([np.sum([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))]) / np.sum([len(a) for a in val_y])
+                val_loss = 1 - (accuracy + macro_recall + micro_recall) / 3
+        
+                lr_scheduler.step(val_loss)
+                val_log[epoch] = val_loss
+        
+                print('--- validation at epoch %d, total processed %d, ACC %.3f/1.000, macR %.3f/%.3f, micR %.3f/%.3f, monitor %d, time elapsed(min) %.2f'
+                      %(epoch, val_size, accuracy, macro_recall, best_macro_recall, micro_recall, best_micro_recall, epoch - np.argmin(val_log[:epoch + 1]), (time.time()-start_time)/60))  
+        
+                # earlystopping
+                if np.argmin(val_log[:epoch + 1]) == epoch:
+                    torch.save(self.net.state_dict(), self.model_path) 
+                
+                elif np.argmin(val_log[:epoch + 1]) <= epoch - 50:
+                    break
     
         print('training terminated at epoch %d' %epoch)
         self.load()
