@@ -20,6 +20,8 @@ parser.add_argument('--patience', type=int, default=20)
 parser.add_argument('--bs', type=int, default=128)
 parser.add_argument('--weight_decay', type=float, default=1e-10)
 parser.add_argument('--val_every', type=int, default=1)
+parser.add_argument('--num_workers', type=int, default=0)
+parser.add_argument('--prefetch_factor', type=int, default=2)
 parser.add_argument('--wandb', action='store_true')
 args = parser.parse_args()
 
@@ -52,7 +54,7 @@ if not os.path.exists('./model/'): os.makedirs('./model/')
 model_path = './model/model_%s_%s_%d.pt' %(method, rtype, iterid)
 
 tstdata = GraphDataset(rtype, split = 'tst', use_rxnfp = use_rxnfp)
-tst_loader = DataLoader(dataset=tstdata, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+tst_loader = DataLoader(dataset=tstdata, batch_size=batch_size, shuffle=False, collate_fn=collate_fn, num_workers=args.num_workers, prefetch_factor=args.prefetch_factor)
 
 n_classes = tstdata.n_classes
 rmol_max_cnt = tstdata.rmol_max_cnt
@@ -68,8 +70,8 @@ print('-- TRAINING')
 if mode == 'trn':
     trndata = GraphDataset(rtype, split = 'trn', use_rxnfp = use_rxnfp, seed = random_state)
     valdata = GraphDataset(rtype, split = 'val', use_rxnfp = use_rxnfp, seed = random_state)
-    trn_loader = DataLoader(dataset=trndata, batch_size=batch_size, shuffle=True, collate_fn=collate_fn, drop_last=True)
-    val_loader = DataLoader(dataset=valdata, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+    trn_loader = DataLoader(dataset=trndata, batch_size=batch_size, shuffle=True, collate_fn=collate_fn, drop_last=True, num_workers=args.num_workers, prefetch_factor=args.prefetch_factor)
+    val_loader = DataLoader(dataset=valdata, batch_size=batch_size, shuffle=False, collate_fn=collate_fn, num_workers=args.num_workers, prefetch_factor=args.prefetch_factor)
 
     print('-- CONFIGURATIONS')
     print('--- reaction type:', rtype)
