@@ -3,7 +3,6 @@ import sys, csv, os
 import pickle as pkl
 import torch
 from torch.utils.data import DataLoader
-import wandb
 from dgl.data.utils import split_dataset, Subset
 from dataset import GraphDataset
 from util import collate_reaction_graphs
@@ -84,7 +83,7 @@ if mode == 'trn':
     print('--- (trn) total no. conditions:', trndata.n_conditions)
     print('--- (trn) no. conditions per reaction (min/avg/max): %d/%.2f/%d'%(np.min(len_list), np.mean(len_list), np.max(len_list)))
 
-    trainer.training(trn_loader, val_loader, lr=args.lr, patience=args.patience, weight_decay=args.weight_decay, val_every=args.val_every)
+    trainer.training(trn_loader, val_loader, lr=args.lr, patience=args.patience, weight_decay=args.weight_decay, val_every=args.val_every, use_wandb=args.wandb, config=args.__dict__)
     
 elif mode == 'tst':
     trainer.load()

@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import wandb
 
 import torch
 import torch.nn as nn
@@ -48,7 +49,7 @@ class Trainer:
         self.net.load_state_dict(torch.load(self.model_path)) 
         
                
-    def training(self, train_loader, val_loader, max_epochs = 500, lr = 1e-3, patience = 20, weight_decay = 1e-10, val_every = 1):
+    def training(self, train_loader, val_loader, max_epochs = 500, lr = 1e-3, patience = 20, weight_decay = 1e-10, val_every = 1, use_wandb = False, config = {}):
    
         loss_fn = nn.BCEWithLogitsLoss(reduction = 'none')
         optimizer = Adam(self.net.parameters(), lr = lr, weight_decay = weight_decay)
@@ -62,6 +63,15 @@ class Trainer:
         best_micro_recall = len(val_y) / np.sum([len(a) for a in val_y])
         
         val_log = np.zeros(max_epochs) + np.inf
+
+        if use_wandb:
+            wandb.init(
+                entity="textreact",
+                project="baselines",
+                name=f"rxnfp_{config.get('rtype')}",
+                config=config
+            )
+
         for epoch in range(max_epochs):
             
             # training
@@ -104,12 +114,28 @@ class Trainer:
                 print('--- validation at epoch %d, total processed %d, ACC %.3f/1.000, macR %.3f/%.3f, micR %.3f/%.3f, monitor %d, time elapsed(min) %.2f'
                       %(epoch, val_size, accuracy, macro_recall, best_macro_recall, micro_recall, best_micro_recall, epoch - np.argmin(val_log[:epoch + 1]), (time.time()-start_time)/60))  
         
+                if use_wandb:
+                    wandb.log({
+                        "train/loss": train_loss,
+                        "train/grad_norm": grad_norm_list[-1].item(),
+                        "test/loss": val_loss,  # 1 - (acc + macR + micR) / 3
+                        "test/acc": accuracy,
+                        "test/macR": macro_recall,
+                        "test/micR": micro_recall
+                    })
+
                 # earlystopping
                 if np.argmin(val_log[:epoch + 1]) == epoch:
                     torch.save(self.net.state_dict(), self.model_path) 
                 
                 elif np.argmin(val_log[:epoch + 1]) <= epoch - 50:
                     break
+    
+            elif use_wandb:
+                wandb.log({
+                    "train/loss": train_loss,
+                    "train/grad_norm": grad_norm_list[-1].item()
+                })
     
         print('training terminated at epoch %d' %epoch)
         self.load()
