@@ -1,0 +1,32 @@
+best_model_dir: ./outputs/uspto_rxn_center_modeling_remapped
+config:
+  architectures:
+  - BertForMaskedLM
+  attention_probs_dropout_prob: 0.1
+  hidden_act: gelu
+  hidden_dropout_prob: 0.1
+  hidden_size: 256
+  initializer_range: 0.02
+  intermediate_size: 512
+  layer_norm_eps: 1.0e-12
+  max_position_embeddings: 512
+  model_type: bert
+  num_attention_heads: 4
+  num_hidden_layers: 12
+  pad_token_id: 0
+  type_vocab_size: 2
+evaluate_during_training: true
+use_multiprocessing: false
+fp16: false
+learning_rate: 0.0001
+manual_seed: 42
+max_seq_length: 256
+mrc_probability: 0.5
+num_train_epochs: 50
+output_dir: ./out/rcm_model_pretrain
+best_model_dir: ./outputs/best_rcm_model_pretrain
+overwrite_output_dir: true
+train_batch_size: 32
+vocab_path: ./dataset/pretrain_data/vocab.txt
+wandb_project: uspto_rxn_center_modeling_remapped
+database_file: ./dataset/pretrain_data/rxn_center_modeling.pkl
