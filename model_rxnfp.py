@@ -101,7 +101,7 @@ class Trainer:
             # validation
             if epoch % val_every == 0:
                 start_time = time.time()
-                val_y_preds = self.inference(val_loader)
+                val_y_preds, _ = self.inference(val_loader)
                 
                 accuracy = np.mean([np.max([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
                 macro_recall = np.mean([np.mean([(c in val_y_preds[i]) for c in val_y[i]]) for i in range(len(val_y))])
@@ -155,4 +155,4 @@ class Trainer:
         tst_y_scores = expit(np.vstack(tst_y_scores))
         tst_y_preds = [[np.where(x > 0.5)[0].tolist()] for x in tst_y_scores]
     
-        return tst_y_preds
+        return tst_y_preds, tst_y_scores

@@ -4,6 +4,10 @@
 [._]s[a-v][a-z]
 [._]sw[a-p]
 
+# output
+*.json
+*.txt
+
 # data
 *.pkl
 *.npz

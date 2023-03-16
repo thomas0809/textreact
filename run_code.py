@@ -1,5 +1,6 @@
 import numpy as np
 import sys, csv, os
+import json
 import pickle as pkl
 import torch
 from torch.utils.data import DataLoader
@@ -22,6 +23,7 @@ parser.add_argument('--val_every', type=int, default=1)
 parser.add_argument('--num_workers', type=int, default=0)
 parser.add_argument('--prefetch_factor', type=int, default=2)
 parser.add_argument('--wandb', action='store_true')
+parser.add_argument('--error_case_path')
 args = parser.parse_args()
 
 rtype = args.rtype
@@ -96,13 +98,25 @@ print('-- EVALUATION')
 print(model_path)
   
 if method in ['rxnfp', 'baseline']:
-    tst_y_preds = trainer.inference(tst_loader)
+    tst_y_preds, tst_y_scores = trainer.inference(tst_loader)
     T = 1
     accuracy = np.mean([np.max([(c in tst_y_preds[i][:T]) for c in tst_y[i]]) for i in range(len(tst_y))])
     macro_recall = np.mean([np.mean([(c in tst_y_preds[i][:T]) for c in tst_y[i]]) for i in range(len(tst_y))])
     micro_recall = np.sum([np.sum([(c in tst_y_preds[i][:T]) for c in tst_y[i]]) for i in range(len(tst_y))]) / np.sum([len(a) for a in tst_y])
 
     print('--- T=%d accuracy/macro-recall/micro-recall:'%T, accuracy, macro_recall, micro_recall) 
+
+    if args.error_case_path is not None:
+        error_cases = []
+        for i in range(len(tst_y)):
+            if all(c != tst_y_preds[i][0] for c in tst_y[i]):
+                error_cases.append({
+                    "ground_truths": tst_y[i],
+                    "prediction": tst_y_preds[i][0],
+                    "scores": tst_y_scores[i].tolist()
+                })
+        with open(args.error_case_path, 'w') as f:
+            json.dump(error_cases, f, indent=4)
 
 elif method == 'proposed':
     tst_y_preds = trainer.inference(tst_loader, n_sampling = 100)
