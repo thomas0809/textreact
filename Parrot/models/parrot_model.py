@@ -98,7 +98,6 @@ class ParrotConditionModel(BertForSequenceClassification):
             decoder_norm,
             output_attention=self.output_attention)
         self.generator = nn.Linear(d_model, tgt_vocab_size)
-
         self.loss_fn = torch.nn.CrossEntropyLoss(
             ignore_index=config.condition_label_mapping[1][PAD])
         if self.use_temperature:
@@ -277,8 +276,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             self.config.update({'output_attention': args['output_attention']})
         if model_type in MODELS_WITHOUT_CLASS_WEIGHTS_SUPPORT and weight is not None:
             raise ValueError(
-                "{} does not currently support class weights".format(
-                    model_type))
+                "{} does not currently support class weights".format(model_type))
         else:
             self.weight = weight
 
@@ -1362,21 +1360,18 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             translate_quene.put((ys, cumul_score, step_number))
         while (not translate_quene.empty()):
             if self.args.use_temperature:
-                ys, cumul_score, step_number, previous_out = translate_quene.get(
-                )
+                ys, cumul_score, step_number, previous_out = translate_quene.get()
             else:
                 ys, cumul_score, step_number = translate_quene.get()
             if ys.size(0) >= max_len:
                 if self.args.use_temperature:
-                    succ_translate.append(
-                        (ys, cumul_score, step_number, previous_out))
+                    succ_translate.append((ys, cumul_score, step_number, previous_out))
                 else:
                     succ_translate.append((ys, cumul_score, step_number))
                 continue
             ys = ys.transpose(0, 1)
             cumul_score = cumul_score.transpose(0, 1)
-            tgt_mask = (self._generate_square_subsequent_mask(ys.size(1)).type(
-                torch.bool)).to(self.device)
+            tgt_mask = (self._generate_square_subsequent_mask(ys.size(1)).type(torch.bool)).to(self.device)
             out, _ = model.decode(
                 ys,
                 memory,
@@ -1398,11 +1393,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
                 _cumul_score = cumul_score * next_scores[:, i].unsqueeze(1)
                 if self.args.use_temperature:
-                    step2translate[step_number].append(
-                        (_ys, _cumul_score, step_number, previous_out))
+                    step2translate[step_number].append((_ys, _cumul_score, step_number, previous_out))
                 else:
-                    step2translate[step_number].append(
-                        (_ys, _cumul_score, step_number))
+                    step2translate[step_number].append((_ys, _cumul_score, step_number))
             if isinstance(beam, int):
                 thread_number = beam if step_number == 1 else beam * beam
             elif isinstance(beam, dict):
@@ -1415,30 +1408,22 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 raise ValueError('beam should be  \'int\' or \'dict\'.')
             if len(step2translate[step_number]) == thread_number:
                 put_list = step2translate[step_number]
-                _ys_cat = torch.cat([x[0].unsqueeze(0) for x in put_list],
-                                    dim=0)  # --> (beam, batch_size, tgt_len)
+                _ys_cat = torch.cat([x[0].unsqueeze(0) for x in put_list], dim=0)  # --> (beam, batch_size, tgt_len)
                 # --> (beam, tgt_len, batch_size)
                 _ys_cat = _ys_cat.transpose(1, 2)
-                _cumul_score_cat = torch.cat([x[1] for x in put_list],
-                                             dim=1)  # --> (batch_size, beam)
-                _cumul_score_cat = _cumul_score_cat.transpose(
-                    0, 1)  # --> (beam, batch_size)
+                _cumul_score_cat = torch.cat([x[1] for x in put_list], dim=1)  # --> (batch_size, beam)
+                _cumul_score_cat = _cumul_score_cat.transpose(0, 1)  # --> (beam, batch_size)
                 _ys_cat_sorted = torch.zeros_like(_ys_cat)
                 _cumul_score_cat_sorted = torch.zeros_like(_cumul_score_cat)
                 if self.args.use_temperature:
-                    _one_step_previous_outs = torch.cat(
-                        [x[3].unsqueeze(0) for x in put_list], dim=0)
-                    _one_step_previous_outs_sorted = torch.zeros_like(
-                        _one_step_previous_outs)
+                    _one_step_previous_outs = torch.cat([x[3].unsqueeze(0) for x in put_list], dim=0)
+                    _one_step_previous_outs_sorted = torch.zeros_like(_one_step_previous_outs)
                 for j in range(_cumul_score_cat.size(1)):
-                    dim_cumul_score_sorted, _idx = _cumul_score_cat[:, j].topk(
-                        thread_number)
+                    dim_cumul_score_sorted, _idx = _cumul_score_cat[:, j].topk(thread_number)
                     _ys_cat_sorted[:, :, j] = _ys_cat[_idx, :, j]
                     _cumul_score_cat_sorted[:, j] = dim_cumul_score_sorted
                     if self.args.use_temperature:
-                        _one_step_previous_outs_sorted[:,
-                                                       j] = _one_step_previous_outs[
-                                                           _idx, j]
+                        _one_step_previous_outs_sorted[:, j] = _one_step_previous_outs[_idx, j]
                 if isinstance(beam, int):
                     for n in range(beam):
                         if self.args.use_temperature:
