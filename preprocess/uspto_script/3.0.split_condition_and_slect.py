@@ -16,17 +16,14 @@ if __name__ == '__main__':
     split_token = '分'
     print('Debug:', debug)
     remove_threshold = 100
-    source_data_path = '../../dataset/source_dataset/'
+    source_data_path = '.'
     duplicate_removal_fname = 'uspto_rxn_condition_remapped_and_reassign_condition_role_rm_duplicate.csv'
     freq_info_path = os.path.join(source_data_path, 'freq_info')
 
     if debug:
-        database = pd.read_csv(os.path.join(
-            source_data_path, duplicate_removal_fname), nrows=10000)
-
+        database = pd.read_csv(os.path.join(source_data_path, duplicate_removal_fname), nrows=10000)
     else:
-        database = pd.read_csv(os.path.join(
-            source_data_path, duplicate_removal_fname))
+        database = pd.read_csv(os.path.join(source_data_path, duplicate_removal_fname))
 
     # 去除条件频率少于阈值以下的数据
     print('Remove data with less than remove_threshold...')
@@ -39,12 +36,12 @@ if __name__ == '__main__':
         remove_compund = df[df['freq_cnt'] < remove_threshold]['smiles']
         remove_index = remove_index | database[role].isin(remove_compund)
     database_remove_below_threshold = database.loc[~remove_index].reset_index(drop=True)
-    print('data number after remove: {}'.format(
-        len(database_remove_below_threshold)))
+    print('data number after remove: {}'.format(len(database_remove_below_threshold)))
     # database_remove_below_threshold.to_csv
     remover = MolRemover(defnFilename='../reagent_Ionic_compound.txt')
     reagent2index_dict = defaultdict(list)
-    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()), total=len(database_remove_below_threshold)):
+    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()),
+                             total=len(database_remove_below_threshold)):
         reagent2index_dict[reagent].append(idx)
 
     if unknown_check:
@@ -54,16 +51,13 @@ if __name__ == '__main__':
         for reagent in tqdm(reagent2index_dict):
             if pd.isna(reagent):
                 reagent_namedtuple = namedtuple('reagent', ['known', 'unknown'])
-                reagent2single_reagent_dict[reagent] = reagent_namedtuple(
-                    [], [])
+                reagent2single_reagent_dict[reagent] = reagent_namedtuple([], [])
                 continue
             reagent_mol = Chem.MolFromSmiles(reagent)
-            reagent_mol_after_rm, remove_mol = remover.StripMolWithDeleted(
-                reagent_mol, onlyFrags=False)
+            reagent_mol_after_rm, remove_mol = remover.StripMolWithDeleted(reagent_mol, onlyFrags=False)
             reagent_smiles_after_rm = Chem.MolToSmiles(reagent_mol_after_rm)
             reagent_smiles_after_rm_list = reagent_smiles_after_rm.split('.')
-            reagent_mols_after_rm = [Chem.MolFromSmiles(
-                x) for x in reagent_smiles_after_rm_list]
+            reagent_mols_after_rm = [Chem.MolFromSmiles(x) for x in reagent_smiles_after_rm_list]
             known_ionic = [Chem.MolToSmiles(x) for x in remove_mol]
             _unknown = []
             reagent_charge_neutral = []
@@ -79,14 +73,9 @@ if __name__ == '__main__':
                         reagent_charge_neutral.append(smi)
             reagent_namedtuple = namedtuple('reagent', ['known', 'unknown'])
             _known = reagent_charge_neutral + known_ionic
-            # if '' in _known:
-            #     print(_known)
-            # if '' in _unknown:
-            #     print(_unknown)
             if _unknown:
                 unknown_combination['.'.join(_unknown)] += 1
-            reagent2single_reagent_dict[reagent] = reagent_namedtuple(
-                _known, _unknown)
+            reagent2single_reagent_dict[reagent] = reagent_namedtuple(_known, _unknown)
         unknown_combination = list(unknown_combination.items())
         unknown_combination.sort(key=lambda x:x[1], reverse=True)
         print('Unknown reagent data count:', sum([x[1] for x in unknown_combination]))
@@ -96,7 +85,8 @@ if __name__ == '__main__':
     else:
         block_unknown_combination = pd.read_csv('../reagent_unknown.txt', header=None)
         block_unknown_combination.columns = ['smiles', 'cnt']
-        print('Will block {} reagent combination, a total of {} data will be deleted.'.format(len(block_unknown_combination), block_unknown_combination['cnt'].sum()))
+        print('Will block {} reagent combination, a total of {} data will be deleted.'.format(
+            len(block_unknown_combination), block_unknown_combination['cnt'].sum()))
 
         reagent2single_reagent_dict = defaultdict(list)
         for reagent in tqdm(reagent2index_dict):
@@ -104,12 +94,10 @@ if __name__ == '__main__':
                 reagent2single_reagent_dict[reagent].append('')
                 continue
             reagent_mol = Chem.MolFromSmiles(reagent)
-            reagent_mol_after_rm, remove_mol = remover.StripMolWithDeleted(
-                reagent_mol, onlyFrags=False)
+            reagent_mol_after_rm, remove_mol = remover.StripMolWithDeleted(reagent_mol, onlyFrags=False)
             reagent_smiles_after_rm = Chem.MolToSmiles(reagent_mol_after_rm)
             reagent_smiles_after_rm_list = reagent_smiles_after_rm.split('.')
-            reagent_mols_after_rm = [Chem.MolFromSmiles(
-                x) for x in reagent_smiles_after_rm_list]
+            reagent_mols_after_rm = [Chem.MolFromSmiles(x) for x in reagent_smiles_after_rm_list]
             known_ionic = [Chem.MolToSmiles(x) for x in remove_mol]
             _unknown = []
             reagent_charge_neutral = []
@@ -132,11 +120,12 @@ if __name__ == '__main__':
     for reagent in reagent2single_reagent_dict:
         if not reagent2single_reagent_dict[reagent]:
             unknown_drop_index.extend(reagent2index_dict[reagent])
-    reagent2single_reagent_dict = {k:v for k,v in reagent2single_reagent_dict.items() if v}
+    reagent2single_reagent_dict = {k: v for k, v in reagent2single_reagent_dict.items() if v}
     database_remove_below_threshold = database_remove_below_threshold.drop(unknown_drop_index)
     database_remove_below_threshold = database_remove_below_threshold.reset_index(drop=True)
     reagent2index_dict = defaultdict(list)
-    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()), total=len(database_remove_below_threshold)):
+    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()),
+                             total=len(database_remove_below_threshold)):
         reagent2index_dict[reagent].append(idx)
 
     # 按照 https://pubs.acs.org/doi/10.1021/acscentsci.8b00357 论文所提到的将catalyst>1, solvent>2, reagent>2 的数据排除
@@ -158,7 +147,8 @@ if __name__ == '__main__':
                 remove_index_for_excess[_idx] = True
     database_remove_below_threshold = database_remove_below_threshold.loc[~remove_index_for_excess].reset_index(drop=True)
     reagent2index_dict = defaultdict(list)
-    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()), total=len(database_remove_below_threshold)):
+    for idx, reagent in tqdm(enumerate(database_remove_below_threshold.reagent.tolist()),
+                             total=len(database_remove_below_threshold)):
         reagent2index_dict[reagent].append(idx)
     print('Spliting conditions...')
     database_remove_below_threshold['catalyst_split'] = database_remove_below_threshold['catalyst']
@@ -176,8 +166,13 @@ if __name__ == '__main__':
             continue
         solvent_split.append(split_token.join(x.split('.')))
     database_remove_below_threshold['solvent_split'] = solvent_split
-    database_remove_below_threshold.to_csv(os.path.join(source_data_path, 'uspto_rxn_condition_remapped_and_reassign_condition_role_rm_duplicate_rm_excess.csv'), index=False)
-    print('Remaining data in the end:',len(database_remove_below_threshold))
+    database_remove_below_threshold.to_csv(
+        os.path.join(
+            source_data_path,
+            'uspto_rxn_condition_remapped_and_reassign_condition_role_rm_duplicate_rm_excess.csv'
+        ),
+        index=False)
+    print('Remaining data in the end:', len(database_remove_below_threshold))
     print('Unique canonical reaction:', len(set(database_remove_below_threshold['canonical_rxn'])))
     print('Unique remapped reaction:', len(set(database_remove_below_threshold['remapped_rxn'])))
     print('Unique catalyst:', len(set(database_remove_below_threshold['catalyst'])))

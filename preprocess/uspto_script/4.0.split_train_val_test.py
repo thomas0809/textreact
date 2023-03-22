@@ -13,28 +13,24 @@ if __name__ == '__main__':
     # 数据集： canonical_rxn --> catalyst, solvent1, solvent2, reagent1, reagent2
     split_token = '分'
     split_frac = (0.8, 0.1, 0.1) # train:val:test
-    source_data_path = '../../dataset/source_dataset/'
+    source_data_path = '.'
     database_remove_below_threshold_fname = 'uspto_rxn_condition_remapped_and_reassign_condition_role_rm_duplicate_rm_excess.csv'
-    final_condition_data_path = os.path.join(
-        source_data_path, 'USPTO_condition_final')
+    final_condition_data_path = os.path.join(source_data_path, 'USPTO_condition_final')
     if not os.path.exists(final_condition_data_path):
         os.makedirs(final_condition_data_path)
     if debug:
-        database = pd.read_csv(os.path.join(
-        source_data_path, database_remove_below_threshold_fname), nrows=10000)
+        database = pd.read_csv(os.path.join(source_data_path, database_remove_below_threshold_fname), nrows=10000)
     else:
-        database = pd.read_csv(os.path.join(
-        source_data_path, database_remove_below_threshold_fname))
+        database = pd.read_csv(os.path.join(source_data_path, database_remove_below_threshold_fname))
     
-    database = database[['source','canonical_rxn', 'catalyst_split', 'solvent_split', 'reagent_split']]
+    database = database[['id', 'source', 'canonical_rxn', 'catalyst_split', 'solvent_split', 'reagent_split']]
+    database['catalyst1'] = database['catalyst_split']
     split_solvent = database['solvent_split'].str.split(split_token, 1, expand=True)
     database['solvent1'], database['solvent2'] = split_solvent[0], split_solvent[1]
     split_reagent = database['reagent_split'].str.split(split_token, 1, expand=True)
     database['reagent1'], database['reagent2'] = split_reagent[0], split_reagent[1]
-    database = database[['source','canonical_rxn', 'catalyst_split',
-                         'solvent1', 'solvent2', 'reagent1', 'reagent2']]
-    database.columns = ['source','canonical_rxn', 'catalyst1',
-                         'solvent1', 'solvent2', 'reagent1', 'reagent2']
+    columns = ['id', 'source', 'canonical_rxn', 'catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2']
+    database = database[columns]
     database_sample = database.sample(frac=1, random_state=seed)
 
     can_rxn2idx_dict = defaultdict(list)

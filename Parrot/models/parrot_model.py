@@ -19,7 +19,10 @@ from torch.nn.modules.normalization import LayerNorm
 from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm, trange
 from tqdm.contrib import tenumerate
-from transformers import Adafactor, AdamW, BertConfig, BertForSequenceClassification, get_constant_schedule, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, get_linear_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup
+from transformers import Adafactor, AdamW, BertConfig, BertForSequenceClassification, get_constant_schedule, \
+    get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, \
+    get_cosine_with_hard_restarts_schedule_with_warmup, get_linear_schedule_with_warmup, \
+    get_polynomial_decay_schedule_with_warmup
 from simpletransformers.config.model_args import ClassificationArgs
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertModel
@@ -32,16 +35,17 @@ import yaml
 
 from models.model_layer import PositionalEncoding, TokenEmbedding, TransformerDecoderLayer, TransformerDecoder
 
-from models.utils import ConditionWithTempDataset, analyze_subgraph_attention_with_condition, load_dataset, print_args, viz_attention_reaction
+from models.utils import ConditionWithTempDataset, analyze_subgraph_attention_with_condition, load_dataset, print_args, \
+    viz_attention_reaction
 
 logger = logging.getLogger(__name__)
 
 try:
     import wandb
+
     wandb_available = True
 except ImportError:
     wandb_available = False
-
 
 BOS, EOS, PAD, MASK = '[BOS]', '[EOS]', '[PAD]', '[MASK]'
 
@@ -49,8 +53,8 @@ BOS, EOS, PAD, MASK = '[BOS]', '[EOS]', '[PAD]', '[MASK]'
 class ParrotConditionModel(BertForSequenceClassification):
 
     def __init__(
-        self,
-        config,
+            self,
+            config,
     ) -> None:
         # super(ConditionModel).__init__()
         super().__init__(config)
@@ -113,16 +117,16 @@ class ParrotConditionModel(BertForSequenceClassification):
             self.reg_loss_fn = torch.nn.MSELoss()
 
     def forward(
-        self,
-        input_ids,
-        attention_mask=None,
-        token_type_ids=None,
-        label_input=None,
-        label_mask=None,
-        label_padding_mask=None,
-        labels=None,
-        memory_key_padding_mask=None,
-        temperature=None,
+            self,
+            input_ids,
+            attention_mask=None,
+            token_type_ids=None,
+            label_input=None,
+            label_mask=None,
+            label_padding_mask=None,
+            labels=None,
+            memory_key_padding_mask=None,
+            temperature=None,
     ):
         if memory_key_padding_mask is None:
             memory_key_padding_mask = (attention_mask == 0)
@@ -191,20 +195,20 @@ class ParrotConditionModel(BertForSequenceClassification):
 class ParrotConditionPredictionModel(SmilesClassificationModel):
 
     def __init__(
-        self,
-        model_type,
-        model_name,
-        tokenizer_type=None,
-        tokenizer_name=None,
-        # num_labels=None,
-        weight=None,
-        args=None,
-        use_cuda=True,
-        cuda_device=-1,
-        freeze_encoder=False,
-        freeze_all_but_one=False,
-        # decoder_args=None,
-        **kwargs,
+            self,
+            model_type,
+            model_name,
+            tokenizer_type=None,
+            tokenizer_name=None,
+            # num_labels=None,
+            weight=None,
+            args=None,
+            use_cuda=True,
+            cuda_device=-1,
+            freeze_encoder=False,
+            freeze_all_but_one=False,
+            # decoder_args=None,
+            **kwargs,
     ):
 
         MODEL_CLASSES = {
@@ -212,9 +216,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         }
 
         if model_type not in MODEL_CLASSES.keys():
-            raise NotImplementedException(
-                f"Currently the following model types are implemented: {MODEL_CLASSES.keys()}"
-            )
+            raise NotImplemented(f"Currently the following model types are implemented: {MODEL_CLASSES.keys()}")
 
         self.args = self._load_model_args(model_name)
 
@@ -262,16 +264,14 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 tokenizer_class = tokenizer_type
 
         if model_name:
-            self.config = config_class.from_pretrained(model_name,
-                                                       **self.args.config)
+            self.config = config_class.from_pretrained(model_name, **self.args.config)
         else:
             self.config = config_class(**self.args.config, **kwargs)
         self.num_labels = self.config.num_labels
         self.config.update(decoder_args)
         self.config.update({'use_temperature': args['use_temperature']})
         if 'ignore_mismatched_sizes' in args:
-            kwargs.update(
-                {'ignore_mismatched_sizes': args['ignore_mismatched_sizes']})
+            kwargs.update({'ignore_mismatched_sizes': args['ignore_mismatched_sizes']})
         if 'output_attention' in args:
             self.config.update({'output_attention': args['output_attention']})
         if model_type in MODELS_WITHOUT_CLASS_WEIGHTS_SUPPORT and weight is not None:
@@ -348,9 +348,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             try:
                 from torch.cuda import amp
             except AttributeError:
-                raise AttributeError(
-                    "fp16 requires Pytorch >= 1.6. Please update Pytorch or turn off fp16."
-                )
+                raise AttributeError("fp16 requires Pytorch >= 1.6. Please update Pytorch or turn off fp16.")
 
         if tokenizer_name is None:
             tokenizer_name = model_name
@@ -359,9 +357,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         else:
             self.args.vocab_path = None
         if tokenizer_name in [
-                "vinai/bertweet-base",
-                "vinai/bertweet-covid19-base-cased",
-                "vinai/bertweet-covid19-base-uncased",
+            "vinai/bertweet-base",
+            "vinai/bertweet-covid19-base-cased",
+            "vinai/bertweet-covid19-base-uncased",
         ]:
             self.tokenizer = tokenizer_class.from_pretrained(
                 tokenizer_name,
@@ -370,9 +368,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 **kwargs,
             )
         elif not self.args.vocab_path and not tokenizer_name in [
-                "vinai/bertweet-base",
-                "vinai/bertweet-covid19-base-cased",
-                "vinai/bertweet-covid19-base-uncased",
+            "vinai/bertweet-base",
+            "vinai/bertweet-covid19-base-cased",
+            "vinai/bertweet-covid19-base-uncased",
         ]:
             self.tokenizer = tokenizer_class.from_pretrained(
                 tokenizer_name,
@@ -382,8 +380,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         elif self.args.vocab_path:
             self.tokenizer = tokenizer_class(self.args.vocab_path,
                                              do_lower_case=False)
-            model_to_resize = self.model.module if hasattr(
-                self.model, "module") else self.model
+            model_to_resize = self.model.module if hasattr(self.model, "module") else self.model
             model_to_resize.resize_token_embeddings(len(self.tokenizer))
 
         if self.args.special_tokens_list:
@@ -403,9 +400,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             self.args.use_multiprocessing = False
 
         if self.args.wandb_project and not wandb_available:
-            warnings.warn(
-                "wandb_project specified but wandb is not available. Wandb disabled."
-            )
+            warnings.warn("wandb_project specified but wandb is not available. Wandb disabled.")
             self.args.wandb_project = None
 
         if freeze_encoder:
@@ -495,12 +490,10 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         if not output_dir:
             output_dir = self.args.output_dir
 
-        if (os.path.exists(output_dir) and os.listdir(output_dir)
-                and not self.args.overwrite_output_dir):
+        if os.path.exists(output_dir) and os.listdir(output_dir) and not self.args.overwrite_output_dir:
             raise ValueError(
                 "Output directory ({}) already exists and is not empty."
-                " Set overwrite_output_dir: True to automatically overwrite.".
-                format(output_dir))
+                " Set overwrite_output_dir: True to automatically overwrite.".format(output_dir))
         self._move_model_to_device()
 
         # 数据集加载只保留一种加载方式，其余全部删除
@@ -509,11 +502,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             train_df["labels"].tolist(),
         )
 
-        train_dataset = self.load_and_cache_examples(train_examples,
-                                                     verbose=verbose,
-                                                     no_cache=True)
-        print('loaded train dataset {}'.format(
-            train_dataset.examples['input_ids'].shape[0]))
+        train_dataset = self.load_and_cache_examples(train_examples, verbose=verbose, no_cache=True)
+        print('loaded train dataset {}'.format(train_dataset.examples['input_ids'].shape[0]))
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(
             train_dataset,
@@ -534,8 +524,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         )
         self.save_model(model=self.model)
         if verbose:
-            logger.info(" Training of {} model complete. Saved to {}.".format(
-                self.args.model_type, output_dir))
+            logger.info(" Training of {} model complete. Saved to {}.".format(self.args.model_type, output_dir))
 
         return global_step, training_details
 
@@ -553,8 +542,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         tb_writer = SummaryWriter(logdir=args.tensorboard_dir)
 
-        t_total = (len(train_dataloader) // args.gradient_accumulation_steps *
-                   args.num_train_epochs)
+        t_total = (len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
 
         no_decay = ["bias", "LayerNorm.weight"]
 
@@ -564,9 +552,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             params = group.pop("params")
             custom_parameter_names.update(params)
             param_group = {**group}
-            param_group["params"] = [
-                p for n, p in model.named_parameters() if n in params
-            ]
+            param_group["params"] = [p for n, p in model.named_parameters() if n in params]
             optimizer_grouped_parameters.append(param_group)
 
         for group in self.args.custom_layer_parameters:
@@ -595,20 +581,18 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 {
                     "params": [
                         p for n, p in model.named_parameters()
-                        if n not in custom_parameter_names and not any(
-                            nd in n for nd in no_decay)
+                        if n not in custom_parameter_names and not any(nd in n for nd in no_decay)
                     ],
                     "weight_decay":
-                    args.weight_decay,
+                        args.weight_decay,
                 },
                 {
                     "params": [
                         p for n, p in model.named_parameters()
-                        if n not in custom_parameter_names and any(
-                            nd in n for nd in no_decay)
+                        if n not in custom_parameter_names and any(nd in n for nd in no_decay)
                     ],
                     "weight_decay":
-                    0.0,
+                        0.0,
                 },
             ])
 
@@ -616,8 +600,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         if warmup_steps != 0:
             args.warmup_steps = warmup_steps
         else:
-            args.warmup_steps = (warmup_steps if args.warmup_steps == 0 else
-                                 args.warmup_steps)
+            args.warmup_steps = (warmup_steps if args.warmup_steps == 0 else args.warmup_steps)
 
         if args.optimizer == "AdamW":
             optimizer = AdamW(
@@ -646,18 +629,12 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         if args.scheduler == "constant_schedule":
             scheduler = get_constant_schedule(optimizer)
-
         elif args.scheduler == "constant_schedule_with_warmup":
             scheduler = get_constant_schedule_with_warmup(
                 optimizer, num_warmup_steps=args.warmup_steps)
-
         elif args.scheduler == "linear_schedule_with_warmup":
             scheduler = get_linear_schedule_with_warmup(
-                optimizer,
-                num_warmup_steps=args.warmup_steps,
-                num_training_steps=t_total,
-            )
-
+                optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
         elif args.scheduler == "cosine_schedule_with_warmup":
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
@@ -665,7 +642,6 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 num_training_steps=t_total,
                 num_cycles=args.cosine_schedule_num_cycles,
             )
-
         elif args.scheduler == "cosine_with_hard_restarts_schedule_with_warmup":
             scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
                 optimizer,
@@ -673,7 +649,6 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 num_training_steps=t_total,
                 num_cycles=args.cosine_schedule_num_cycles,
             )
-
         elif args.scheduler == "polynomial_decay_schedule_with_warmup":
             scheduler = get_polynomial_decay_schedule_with_warmup(
                 optimizer,
@@ -682,10 +657,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 lr_end=args.polynomial_decay_schedule_lr_end,
                 power=args.polynomial_decay_schedule_power,
             )
-
         else:
-            raise ValueError("{} is not a valid scheduler.".format(
-                args.scheduler))
+            raise ValueError("{} is not a valid scheduler.".format(args.scheduler))
+
         if args.n_gpu > 1:
             model = torch.nn.DataParallel(model)
 
@@ -713,52 +687,38 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 else:
                     checkpoint_suffix = checkpoint_suffix[-1]
                 global_step = int(checkpoint_suffix)
-                epochs_trained = global_step // (
-                    len(train_dataloader) // args.gradient_accumulation_steps)
+                epochs_trained = global_step // (len(train_dataloader) // args.gradient_accumulation_steps)
                 steps_trained_in_current_epoch = global_step % (
-                    len(train_dataloader) // args.gradient_accumulation_steps)
+                        len(train_dataloader) // args.gradient_accumulation_steps)
 
-                logger.info(
-                    "   Continuing training from checkpoint, will skip to saved global_step"
-                )
-                logger.info("   Continuing training from epoch %d",
-                            epochs_trained)
-                logger.info("   Continuing training from global step %d",
-                            global_step)
-                logger.info(
-                    "   Will skip the first %d steps in the current epoch",
-                    steps_trained_in_current_epoch,
-                )
+                logger.info("   Continuing training from checkpoint, will skip to saved global_step")
+                logger.info("   Continuing training from epoch %d", epochs_trained)
+                logger.info("   Continuing training from global step %d", global_step)
+                logger.info("   Will skip the first %d steps in the current epoch", steps_trained_in_current_epoch)
             except ValueError:
                 logger.info("   Starting fine-tuning.")
         if args.evaluate_during_training:
-            training_progress_scores = self._create_training_progress_scores(
-                **kwargs)
+            training_progress_scores = self._create_training_progress_scores(**kwargs)
             if args.use_temperature:
                 training_progress_scores['eval_temp_mae'] = []
 
         if args.wandb_project:
             if not wandb.setup().settings.sweep_id:
                 logger.info(" Initializing WandB run for training.")
-                wandb.init(
-                    project=args.wandb_project,
-                    config={**asdict(args)},
-                    **args.wandb_kwargs,
-                )
+                wandb.init(project=args.wandb_project, config={**asdict(args)}, **args.wandb_kwargs, )
                 wandb.run._label(repo="simpletransformers")
             wandb.watch(self.model)
 
         if self.args.fp16:
             from torch.cuda import amp
-
             scaler = amp.GradScaler()
+
         for _ in train_iterator:
             model.train()
             if epochs_trained > 0:
                 epochs_trained -= 1
                 continue
-            train_iterator.set_description(
-                f"Epoch {epoch_number + 1} of {args.num_train_epochs}")
+            train_iterator.set_description(f"Epoch {epoch_number + 1} of {args.num_train_epochs}")
             batch_iterator = tqdm(
                 train_dataloader,
                 desc=f"Running Epoch {epoch_number} of {args.num_train_epochs}",
@@ -783,9 +743,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                     loss = outputs[0]
 
                 if args.n_gpu > 1:
-                    loss = (
-                        loss.mean()
-                    )  # mean() to average on multi-gpu parallel training
+                    loss = (loss.mean())  # mean() to average on multi-gpu parallel training
 
                 current_loss = loss.item()
                 current_ppl = np.exp(current_loss)
@@ -795,8 +753,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
                 if show_running_loss:
                     batch_iterator.set_description(
-                        f"Epochs {epoch_number}/{args.num_train_epochs}. Running Loss: {current_loss:9.4f}, ppl: {current_ppl:9.4f}"
-                    )
+                        f"Epochs {epoch_number}/{args.num_train_epochs}. Running Loss: {current_loss:8.4f}")
 
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
@@ -812,8 +769,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                     if self.args.fp16:
                         scaler.unscale_(optimizer)
                     if args.optimizer == "AdamW":
-                        torch.nn.utils.clip_grad_norm_(model.parameters(),
-                                                       args.max_grad_norm)
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
                     if self.args.fp16:
                         scaler.step(optimizer)
@@ -826,194 +782,28 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
                     if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                         # Log metrics
-                        tb_writer.add_scalar("lr",
-                                             scheduler.get_last_lr()[0],
-                                             global_step)
-                        tb_writer.add_scalar(
-                            "loss",
-                            (tr_loss - logging_loss) / args.logging_steps,
-                            global_step,
-                        )
+                        tb_writer.add_scalar("lr", scheduler.get_last_lr()[0], global_step)
+                        tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
                         logging_loss = tr_loss
                         if args.wandb_project or self.is_sweeping:
                             wandb.log({
                                 "Training loss": current_loss,
                                 "lr": scheduler.get_last_lr()[0],
-                                "global_step": global_step,
-                            })
+                            }, step=global_step)
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
                         # Save model checkpoint
-                        output_dir_current = os.path.join(
-                            output_dir, "checkpoint-{}".format(global_step))
-
-                        self.save_model(output_dir_current,
-                                        optimizer,
-                                        scheduler,
-                                        model=model)
-
-                    if args.evaluate_during_training and (
-                            args.evaluate_during_training_steps > 0
-                            and global_step %
-                            args.evaluate_during_training_steps == 0):
-                        # Only evaluate when single GPU otherwise metrics may not average well
-                        results = self.eval_model(
-                            eval_df,
-                            verbose=verbose
-                            and args.evaluate_during_training_verbose,
-                            silent=args.evaluate_during_training_silent,
-                            wandb_log=False,
-                            **kwargs,
-                        )
-                        for key, value in results.items():
-                            try:
-                                tb_writer.add_scalar("eval_{}".format(key),
-                                                     value, global_step)
-                            except (NotImplementedError, AssertionError):
-                                pass
-
-                        output_dir_current = os.path.join(
-                            output_dir, "checkpoint-{}".format(global_step))
-
-                        if args.save_eval_checkpoints:
-                            self.save_model(
-                                output_dir_current,
-                                optimizer,
-                                scheduler,
-                                model=model,
-                                results=results,
-                            )
-                        training_progress_scores["global_step"].append(
-                            global_step)
-                        training_progress_scores["train_loss"].append(
-                            current_loss)
-                        training_progress_scores["train_ppl"].append(
-                            current_ppl)
-                        for key in results:
-                            training_progress_scores[key].append(results[key])
-                        report = pd.DataFrame(training_progress_scores)
-                        report.to_csv(
-                            os.path.join(args.output_dir,
-                                         "training_progress_scores.csv"),
-                            index=False,
-                        )
-
-                        if args.wandb_project or self.is_sweeping:
-                            wandb.log(
-                                self._get_last_metrics(
-                                    training_progress_scores))
-
-                        if not best_eval_metric:
-                            best_eval_metric = results[
-                                args.early_stopping_metric]
-                            self.save_model(
-                                args.best_model_dir,
-                                optimizer,
-                                scheduler,
-                                model=model,
-                                results=results,
-                            )
-                        if best_eval_metric and args.early_stopping_metric_minimize:
-                            if (best_eval_metric -
-                                    results[args.early_stopping_metric] >
-                                    args.early_stopping_delta):
-                                best_eval_metric = results[
-                                    args.early_stopping_metric]
-                                self.save_model(
-                                    args.best_model_dir,
-                                    optimizer,
-                                    scheduler,
-                                    model=model,
-                                    results=results,
-                                )
-                                early_stopping_counter = 0
-                            else:
-                                if args.use_early_stopping:
-                                    if (early_stopping_counter <
-                                            args.early_stopping_patience):
-                                        early_stopping_counter += 1
-                                        if verbose:
-                                            logger.info(
-                                                f" No improvement in {args.early_stopping_metric}"
-                                            )
-                                            logger.info(
-                                                f" Current step: {early_stopping_counter}"
-                                            )
-                                            logger.info(
-                                                f" Early stopping patience: {args.early_stopping_patience}"
-                                            )
-                                    else:
-                                        if verbose:
-                                            logger.info(
-                                                f" Patience of {args.early_stopping_patience} steps reached"
-                                            )
-                                            logger.info(
-                                                " Training terminated.")
-                                            train_iterator.close()
-                                        return (
-                                            global_step,
-                                            tr_loss / global_step if not self.
-                                            args.evaluate_during_training else
-                                            training_progress_scores,
-                                        )
-                        else:
-                            if (results[args.early_stopping_metric] -
-                                    best_eval_metric >
-                                    args.early_stopping_delta):
-                                best_eval_metric = results[
-                                    args.early_stopping_metric]
-                                self.save_model(
-                                    args.best_model_dir,
-                                    optimizer,
-                                    scheduler,
-                                    model=model,
-                                    results=results,
-                                )
-                                early_stopping_counter = 0
-                            else:
-                                if args.use_early_stopping:
-                                    if (early_stopping_counter <
-                                            args.early_stopping_patience):
-                                        early_stopping_counter += 1
-                                        if verbose:
-                                            logger.info(
-                                                f" No improvement in {args.early_stopping_metric}"
-                                            )
-                                            logger.info(
-                                                f" Current step: {early_stopping_counter}"
-                                            )
-                                            logger.info(
-                                                f" Early stopping patience: {args.early_stopping_patience}"
-                                            )
-                                    else:
-                                        if verbose:
-                                            logger.info(
-                                                f" Patience of {args.early_stopping_patience} steps reached"
-                                            )
-                                            logger.info(
-                                                " Training terminated.")
-                                            train_iterator.close()
-                                        return (
-                                            global_step,
-                                            tr_loss / global_step if not self.
-                                            args.evaluate_during_training else
-                                            training_progress_scores,
-                                        )
-                        model.train()
+                        output_dir_current = os.path.join(output_dir, "checkpoint-{}".format(global_step))
+                        self.save_model(output_dir_current, optimizer, scheduler, model=model)
 
             epoch_number += 1
-            output_dir_current = os.path.join(
-                output_dir,
-                "checkpoint-{}-epoch-{}".format(global_step, epoch_number))
+            output_dir_current = os.path.join(output_dir, "checkpoint-{}-epoch-{}".format(global_step, epoch_number))
 
             if args.save_model_every_epoch or args.evaluate_during_training:
                 os.makedirs(output_dir_current, exist_ok=True)
 
             if args.save_model_every_epoch:
-                self.save_model(output_dir_current,
-                                optimizer,
-                                scheduler,
-                                model=model)
+                self.save_model(output_dir_current, optimizer, scheduler, model=model)
 
             if args.evaluate_during_training and args.evaluate_each_epoch:
                 results = self.eval_model(
@@ -1024,115 +814,49 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                     **kwargs,
                 )
 
-                self.save_model(output_dir_current,
-                                optimizer,
-                                scheduler,
-                                results=results)
+                self.save_model(output_dir_current, optimizer, scheduler, results=results)
 
                 training_progress_scores["global_step"].append(global_step)
                 training_progress_scores["train_loss"].append(current_loss)
-                training_progress_scores["train_ppl"].append(current_ppl)
                 for key in results:
                     training_progress_scores[key].append(results[key])
                 report = pd.DataFrame(training_progress_scores)
-                report.to_csv(
-                    os.path.join(args.output_dir,
-                                 "training_progress_scores.csv"),
-                    index=False,
-                )
+                report.to_csv(os.path.join(args.output_dir, "training_progress_scores.csv"), index=False)
 
                 if args.wandb_project or self.is_sweeping:
-                    wandb.log(self._get_last_metrics(training_progress_scores))
+                    wandb.log(self._get_last_metrics(training_progress_scores), step=global_step)
 
                 tb_writer.flush()
 
                 if not best_eval_metric:
                     best_eval_metric = results[args.early_stopping_metric]
-                    self.save_model(
-                        args.best_model_dir,
-                        optimizer,
-                        scheduler,
-                        model=model,
-                        results=results,
-                    )
-                if best_eval_metric and args.early_stopping_metric_minimize:
-                    if (best_eval_metric - results[args.early_stopping_metric]
-                            > args.early_stopping_delta):
-                        best_eval_metric = results[args.early_stopping_metric]
-                        self.save_model(
-                            args.best_model_dir,
-                            optimizer,
-                            scheduler,
-                            model=model,
-                            results=results,
-                        )
-                        early_stopping_counter = 0
-                    else:
-                        if (args.use_early_stopping
-                                and args.early_stopping_consider_epochs):
-                            if early_stopping_counter < args.early_stopping_patience:
-                                early_stopping_counter += 1
-                                if verbose:
-                                    logger.info(
-                                        f" No improvement in {args.early_stopping_metric}"
-                                    )
-                                    logger.info(
-                                        f" Current step: {early_stopping_counter}"
-                                    )
-                                    logger.info(
-                                        f" Early stopping patience: {args.early_stopping_patience}"
-                                    )
-                            else:
-                                if verbose:
-                                    logger.info(
-                                        f" Patience of {args.early_stopping_patience} steps reached"
-                                    )
-                                    logger.info(" Training terminated.")
-                                    train_iterator.close()
-                                return (
-                                    global_step,
-                                    tr_loss / global_step
-                                    if not self.args.evaluate_during_training
-                                    else training_progress_scores,
-                                )
+                    self.save_model(args.best_model_dir, optimizer, scheduler, model=model, results=results)
                 else:
-                    if (results[args.early_stopping_metric] - best_eval_metric
-                            > args.early_stopping_delta):
+                    if args.early_stopping_metric_minimize:
+                        delta = best_eval_metric - results[args.early_stopping_metric]
+                    else:
+                        delta = results[args.early_stopping_metric] - best_eval_metric
+
+                    if delta > args.early_stopping_delta:
                         best_eval_metric = results[args.early_stopping_metric]
-                        self.save_model(
-                            args.best_model_dir,
-                            optimizer,
-                            scheduler,
-                            model=model,
-                            results=results,
-                        )
+                        self.save_model(args.best_model_dir, optimizer, scheduler, model=model, results=results)
                         early_stopping_counter = 0
                     else:
-                        if (args.use_early_stopping
-                                and args.early_stopping_consider_epochs):
+                        if args.use_early_stopping and args.early_stopping_consider_epochs:
                             if early_stopping_counter < args.early_stopping_patience:
                                 early_stopping_counter += 1
                                 if verbose:
-                                    logger.info(
-                                        f" No improvement in {args.early_stopping_metric}"
-                                    )
-                                    logger.info(
-                                        f" Current step: {early_stopping_counter}"
-                                    )
-                                    logger.info(
-                                        f" Early stopping patience: {args.early_stopping_patience}"
-                                    )
+                                    logger.info(f" No improvement in {args.early_stopping_metric}")
+                                    logger.info(f" Current step: {early_stopping_counter}")
+                                    logger.info(f" Early stopping patience: {args.early_stopping_patience}")
                             else:
                                 if verbose:
-                                    logger.info(
-                                        f" Patience of {args.early_stopping_patience} steps reached"
-                                    )
+                                    logger.info(f" Patience of {args.early_stopping_patience} steps reached")
                                     logger.info(" Training terminated.")
                                     train_iterator.close()
                                 return (
                                     global_step,
-                                    tr_loss / global_step
-                                    if not self.args.evaluate_during_training
+                                    tr_loss / global_step if not self.args.evaluate_during_training
                                     else training_progress_scores,
                                 )
 
@@ -1251,11 +975,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                     eval_temp_mae += outputs[-1].item()
             nb_eval_steps += 1
             start_index = self.args.eval_batch_size * i
-            end_index = (start_index + self.args.eval_batch_size if i !=
-                         (n_batches - 1) else len(eval_dataset))
+            end_index = (start_index + self.args.eval_batch_size if i != (n_batches - 1) else len(eval_dataset))
 
-            out_label_ids[start_index:end_index] = (
-                inputs["labels"][:, 1:].detach().cpu().numpy())
+            out_label_ids[start_index:end_index] = (inputs["labels"][:, 1:].detach().cpu().numpy())
 
         eval_loss = eval_loss / nb_eval_steps
         eval_ppl = np.exp(eval_loss)
@@ -1266,7 +988,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             results['eval_temp_mae'] = eval_temp_mae
 
         results['eval_loss'] = eval_loss
-        results['eval_ppl'] = eval_ppl
+        # results['eval_ppl'] = eval_ppl
 
         return results
 
@@ -1277,16 +999,15 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             "global_step": [],
             "train_loss": [],
             "eval_loss": [],
-            "train_ppl": [],
-            "eval_ppl": [],
+            # "train_ppl": [],
+            # "eval_ppl": [],
             **extra_metrics,
         }
 
         return training_progress_scores
 
     def _generate_square_subsequent_mask(self, sz):
-        mask = (torch.triu(torch.ones(
-            (sz, sz), device=self.device)) == 1).transpose(0, 1)
+        mask = (torch.triu(torch.ones((sz, sz), device=self.device)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(
             mask == 1, float(0.0))
         return mask
@@ -1317,8 +1038,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         inputs['label_mask'] = self._generate_square_subsequent_mask(
             labels_seq_len)
         # inputs['label_padding_mask'] = (inputs['label_input'] == self.condition_label_mapping[1]['[PAD]']).transpose(0, 1)
-        inputs['label_padding_mask'] = (
-            inputs['label_input'] == self.condition_label_mapping[1]['[PAD]'])
+        inputs['label_padding_mask'] = (inputs['label_input'] == self.condition_label_mapping[1]['[PAD]'])
         inputs['memory_key_padding_mask'] = (inputs['attention_mask'] == 0)
         # del inputs['labels']
         return inputs
@@ -1333,12 +1053,12 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
             loss = loss_fct(logits.view(-1, num_labels), labels.view(-1))
         if args.use_temperature:
-            batch_temp_mae = torch.abs(inputs["temperature"] -
-                                       outputs[4]).sum()
+            batch_temp_mae = torch.abs(inputs["temperature"] - outputs[4]).sum()
             return (loss, *outputs[1:], batch_temp_mae)
         return (loss, *outputs[1:])
 
     def translate_beam_search(self, model, inputs, max_len, beam):
+
         start_symbol = self.condition_label_mapping[1][BOS]
         step2translate = defaultdict(list)
         succ_translate = []
@@ -1347,10 +1067,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         memory_key_padding_mask = inputs['memory_key_padding_mask']
         del inputs['memory_key_padding_mask']
         memory = model.bert(**inputs)[0]
-        ys = torch.ones(memory.size(0),
-                        1).fill_(start_symbol).type(torch.long).to(self.device)
-        cumul_score = torch.ones(memory.size(0)).type(torch.float).to(
-            self.device).view(-1, 1)
+        ys = torch.ones(memory.size(0), 1).fill_(start_symbol).type(torch.long).to(self.device)
+        cumul_score = torch.ones(memory.size(0)).type(torch.float).to(self.device).view(-1, 1)
         ys = ys.transpose(0, 1)
         cumul_score = cumul_score.transpose(0, 1)
         step_number = 0
@@ -1358,7 +1076,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             translate_quene.put((ys, cumul_score, step_number, None))
         else:
             translate_quene.put((ys, cumul_score, step_number))
-        while (not translate_quene.empty()):
+        while not translate_quene.empty():
             if self.args.use_temperature:
                 ys, cumul_score, step_number, previous_out = translate_quene.get()
             else:
@@ -1452,8 +1170,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                                  step_number))
                 else:
                     raise ValueError('beam should be  \'int\' or \'dict\'.')
-        _tgt_tokens = torch.cat([x[0].unsqueeze(0) for x in succ_translate],
-                                dim=0)
+        _tgt_tokens = torch.cat([x[0].unsqueeze(0) for x in succ_translate], dim=0)
         _cumul_scores = torch.cat([x[1] for x in succ_translate])
         tgt_tokens = torch.zeros_like(_tgt_tokens)
         cumul_scores = torch.zeros_like(_cumul_scores)
@@ -1463,11 +1180,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             previous_outs = torch.zeros_like(_previous_outs)
         for j in range(_cumul_scores.size(1)):
             if isinstance(beam, int):
-                dim_cumul_scores_sorted, _idx = _cumul_score_cat[:,
-                                                                 j].topk(beam)
+                dim_cumul_scores_sorted, _idx = _cumul_score_cat[:, j].topk(beam)
             elif isinstance(beam, dict):
-                dim_cumul_scores_sorted, _idx = _cumul_score_cat[:, j].topk(
-                    thread_number)
+                dim_cumul_scores_sorted, _idx = _cumul_score_cat[:, j].topk(thread_number)
             else:
                 raise ValueError('beam should be  \'int\' or \'dict\'.')
             tgt_tokens[:, :, j] = _ys_cat[_idx, :, j]
@@ -1508,8 +1223,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         ]
 
         repeat_number = one_pred.size(0)
-        hit_mat = one_ground_truth.unsqueeze(0).repeat(repeat_number,
-                                                       1) == one_pred
+        hit_mat = one_ground_truth.unsqueeze(0).repeat(repeat_number, 1) == one_pred
         hit_mat = hit_mat[:, calculate_cols]
         overall_hit_mat = hit_mat.sum(1) == hit_mat.size(1)
         topk_hit_df = pd.DataFrame()
@@ -1955,8 +1669,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                         [ys, torch.ones(1, 1).type_as(ys).fill_(next_word)],
                         dim=1)
         predicted_conditions = [
-            self.condition_label_mapping[0][x] for x in ys.tolist()[0]
-        ][1:-1]
+                                   self.condition_label_mapping[0][x] for x in ys.tolist()[0]
+                               ][1:-1]
         attention_weights = [
             x[:, :, :, :len(input_tokens) + 2] for x in attention_weights
         ]
@@ -2127,11 +1841,10 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 zip(input_tokens_list, test_attention_weights),
                 desc='Remove Masked Attentions',
                 total=len(input_tokens_list)):
-
             attention_weights = attention_weights[:, :, :, :len(input_tokens) +
-                                                  2]
+                                                            2]
             attention_weights = attention_weights[:, :, :-1,
-                                                  1:-1].transpose(2, 3)
+                                1:-1].transpose(2, 3)
             test_attention_weights_rm_masked_attn.append(attention_weights)
 
         rxn_smiles = test_df["text"].astype(str).tolist()
@@ -2160,7 +1873,6 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
 
 if __name__ == '__main__':
-
     config_file = './data/bert_condition_data/config_debug.yaml'
     print_args(config_file)
     config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
@@ -2170,9 +1882,9 @@ if __name__ == '__main__':
     dataset_df, condition_label_mapping = load_dataset(**dataset_args)
     model_args['decoder_args'].update({
         'tgt_vocab_size':
-        len(condition_label_mapping[0]),
+            len(condition_label_mapping[0]),
         'condition_label_mapping':
-        condition_label_mapping
+            condition_label_mapping
     })
     model = ParrotConditionPredictionModel("bert",
                                            model_args['best_model_dir'],

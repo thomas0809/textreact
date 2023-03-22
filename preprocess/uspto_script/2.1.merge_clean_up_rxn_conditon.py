@@ -15,7 +15,7 @@ def write_freq(fpath, freq_data):
 if __name__ == '__main__':
     debug = False
 
-    source_data_path = '../../dataset/source_dataset/'
+    source_data_path = '.'
     merge_data_fname = 'uspto_rxn_condition_remapped_and_reassign_condition_role.csv'
     duplicate_removal_fname = 'uspto_rxn_condition_remapped_and_reassign_condition_role_rm_duplicate.csv'
     freq_info_path = os.path.join(source_data_path, 'freq_info')
