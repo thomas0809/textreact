@@ -11,8 +11,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 def main(parser_args, debug=False):
 
-    config = yaml.load(open(parser_args.config_path, "r"),
-                       Loader=yaml.FullLoader)
+    config = yaml.load(open(parser_args.config_path, "r"), Loader=yaml.FullLoader)
     model_args = config['model_args']
     dataset_args = config['dataset_args']
 
@@ -24,10 +23,8 @@ def main(parser_args, debug=False):
 
     dataset_df, condition_label_mapping = load_dataset(**dataset_args)
     model_args['decoder_args'].update({
-        'tgt_vocab_size':
-        len(condition_label_mapping[0]),
-        'condition_label_mapping':
-        condition_label_mapping
+        'tgt_vocab_size': len(condition_label_mapping[0]),
+        'condition_label_mapping': condition_label_mapping
     })
 
     trained_path = model_args['best_model_dir']
@@ -51,9 +48,7 @@ def main(parser_args, debug=False):
 
     if testset_args['testset_distinguish_catalyst']:
         test_df_catalsyt_na = test_df.loc[test_df['catalyst1'].isna()]
-        test_df_catalsyt_na = test_df_catalsyt_na[[
-            'canonical_rxn', 'condition_labels'
-        ]]
+        test_df_catalsyt_na = test_df_catalsyt_na[['canonical_rxn', 'condition_labels']]
         test_df_catalsyt_na.columns = ['text', 'labels']
         pred_conditions, pred_temperatures, topk_acc_df_catalyst_na = model.condition_beam_search(
             test_df_catalsyt_na,
@@ -72,9 +67,7 @@ def main(parser_args, debug=False):
         print(topk_acc_df_catalyst_na)
 
         test_df_catalsyt_have = test_df.loc[~test_df['catalyst1'].isna()]
-        test_df_catalsyt_have = test_df_catalsyt_have[[
-            'canonical_rxn', 'condition_labels'
-        ]]
+        test_df_catalsyt_have = test_df_catalsyt_have[['canonical_rxn', 'condition_labels']]
         test_df_catalsyt_have.columns = ['text', 'labels']
         pred_conditions, pred_temperatures, topk_acc_df_catalyst_have = model.condition_beam_search(
             test_df_catalsyt_have,
@@ -99,8 +92,7 @@ def main(parser_args, debug=False):
 
         if 'condition_to_calculate' in testset_args:
             topk_fmark = ''.join(testset_args['test_condition_items'])
-            topk_results_fname = testset_args['topk_results_fname'].replace(
-                '.csv', f'_{topk_fmark}.csv')
+            topk_results_fname = testset_args['topk_results_fname'].replace('.csv', f'_{topk_fmark}.csv')
         else:
             topk_results_fname = testset_args['topk_results_fname']
 
@@ -110,7 +102,7 @@ def main(parser_args, debug=False):
             test_df,
             output_dir=model_args['best_model_dir'],
             beam=beam,
-            test_batch_size=8,
+            test_batch_size=model_args['eval_batch_size'],
             calculate_topk_accuracy=True,
             topk_results_fname=topk_results_fname,
             condition_to_calculate=testset_args['test_condition_items'])

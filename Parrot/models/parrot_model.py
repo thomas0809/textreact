@@ -93,8 +93,7 @@ class ParrotConditionModel(BertForSequenceClassification):
             **factory_kwargs,
             output_attention=self.output_attention)
         self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size=d_model)
-        self.positional_encoding = PositionalEncoding(emb_size=d_model,
-                                                      dropout=dropout)
+        self.positional_encoding = PositionalEncoding(emb_size=d_model, dropout=dropout)
         decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
         self.decoder = TransformerDecoder(
             decoder_layer,
@@ -102,17 +101,13 @@ class ParrotConditionModel(BertForSequenceClassification):
             decoder_norm,
             output_attention=self.output_attention)
         self.generator = nn.Linear(d_model, tgt_vocab_size)
-        self.loss_fn = torch.nn.CrossEntropyLoss(
-            ignore_index=config.condition_label_mapping[1][PAD])
+        self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=config.condition_label_mapping[1][PAD])
         if self.use_temperature:
             self.memory_regression_layer = nn.Sequential(
-                nn.Linear(
-                    self.config.max_position_embeddings *
-                    self.config.hidden_size, d_model),
+                nn.Linear(self.config.max_position_embeddings * self.config.hidden_size, d_model),
                 nn.ReLU(),
             )
-            self.regression_layer1 = nn.Sequential(
-                nn.Linear(d_model * 5, d_model), nn.ReLU())
+            self.regression_layer1 = nn.Sequential(nn.Linear(d_model * 5, d_model), nn.ReLU())
             self.regression_layer2 = nn.Linear(2 * d_model, 1)
             self.reg_loss_fn = torch.nn.MSELoss()
 
@@ -142,8 +137,7 @@ class ParrotConditionModel(BertForSequenceClassification):
         logits = self.generator(outs)
 
         labels_out = labels[:, 1:]
-        loss = self.loss_fn(logits.reshape(-1, logits.shape[-1]),
-                            labels_out.reshape(-1))
+        loss = self.loss_fn(logits.reshape(-1, logits.shape[-1]), labels_out.reshape(-1))
 
         if self.use_temperature:
             temp_memory = memory.reshape(
@@ -152,15 +146,13 @@ class ParrotConditionModel(BertForSequenceClassification):
             temp_memory = self.memory_regression_layer(temp_memory)
 
             temp_out = outs[:, :-1, :]
-            temp_out = temp_out.reshape(-1,
-                                        temp_out.size(1) * temp_out.size(2))
+            temp_out = temp_out.reshape(-1, temp_out.size(1) * temp_out.size(2))
             temp_out = self.regression_layer1(temp_out)
 
             temp_out = torch.cat([temp_memory, temp_out], dim=1)
             temp_out = self.regression_layer2(temp_out)
 
-            loss_reg = self.reg_loss_fn(temp_out.reshape(-1),
-                                        temperature.reshape(-1))
+            loss_reg = self.reg_loss_fn(temp_out.reshape(-1), temperature.reshape(-1))
             # loss += 0.001*loss_reg
 
             return loss, logits, attention_weights, loss_reg, temp_out
@@ -1218,9 +1210,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         condition_item2cols = {'c1': 0, 's1': 1, 's2': 2, 'r1': 3, 'r2': 4}
 
-        calculate_cols = [
-            condition_item2cols[x] for x in condition_to_calculate
-        ]
+        calculate_cols = [condition_item2cols[x] for x in condition_to_calculate]
 
         repeat_number = one_pred.size(0)
         hit_mat = one_ground_truth.unsqueeze(0).repeat(repeat_number, 1) == one_pred
@@ -1348,21 +1338,13 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 if self.args.use_temperature:
                     memory, outputs_hidden = search_outputs[2]
                     closest_outputs = outputs_hidden[0]
-                    closest_temp = model.decode_temperature(
-                        memory=memory, decoder_output=closest_outputs)
+                    closest_temp = model.decode_temperature(memory=memory, decoder_output=closest_outputs)
                     pred_temperatures += closest_temp.view(-1).tolist()
                     gt_temperatures += inputs['temperature'].view(-1).tolist()
-                    one_batch_test_temp_mae = torch.abs(
-                        closest_temp.view(-1) -
-                        inputs['temperature'].view(-1)).sum()
+                    one_batch_test_temp_mae = torch.abs(closest_temp.view(-1) - inputs['temperature'].view(-1)).sum()
                     test_temp_mae += one_batch_test_temp_mae.item()
-            tgt_tokens_list = [
-                tgt_tokens[:, :, i].tolist()
-                for i in range(tgt_tokens.size(-1))
-            ]
-            scores_list = [
-                scores[:, i].tolist() for i in range(scores.size(1))
-            ]
+            tgt_tokens_list = [tgt_tokens[:, :, i].tolist() for i in range(tgt_tokens.size(-1))]
+            scores_list = [scores[:, i].tolist() for i in range(scores.size(1))]
 
             if calculate_topk_accuracy:
                 one_batch_topk_acc_mat = self._calculate_batch_topk_hit(
@@ -1372,11 +1354,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 topk_acc_mat += one_batch_topk_acc_mat
 
             batch_results = []
-            for one_group_tgt_tokens, one_group_scores in zip(
-                    tgt_tokens_list, scores_list):
+            for one_group_tgt_tokens, one_group_scores in zip(tgt_tokens_list, scores_list):
                 one_group_sentence = []
-                for tgt_tokens, score in zip(one_group_tgt_tokens,
-                                             one_group_scores):
+                for tgt_tokens, score in zip(one_group_tgt_tokens, one_group_scores):
                     one_group_sentence.append(
                         (self._idx2condition(tgt_tokens), score))
                 batch_results.append(one_group_sentence[:n_best])
@@ -1392,15 +1372,12 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             # topk_acc_df.index = ['c1', 's1', 's2', 'r1', 'r2', 'overall']
             topk_acc_df.index = condition_to_calculate + ['overall']
             if self.args.use_temperature:
-                assert len(pred_temperatures
-                           ) == test_dataset.examples['input_ids'].shape[0]
-                test_temp_mae = test_temp_mae / test_dataset.examples[
-                    'input_ids'].shape[0]
+                assert len(pred_temperatures) == test_dataset.examples['input_ids'].shape[0]
+                test_temp_mae = test_temp_mae / test_dataset.examples['input_ids'].shape[0]
                 test_temp_r2 = r2_score(gt_temperatures, pred_temperatures)
                 topk_acc_df.loc['closest_pred_temp_mae'] = test_temp_mae
                 topk_acc_df.loc['closest_pred_temp_r2'] = test_temp_r2
-            topk_acc_df.to_csv(
-                os.path.join(test_output_dir, topk_results_fname))
+            topk_acc_df.to_csv(os.path.join(test_output_dir, topk_results_fname))
 
             return pred_conditions, pred_temperatures, topk_acc_df
         return pred_conditions, pred_temperatures
