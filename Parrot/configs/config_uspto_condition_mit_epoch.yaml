@@ -8,23 +8,24 @@ model_args:
   early_stopping_consider_epochs: true
   early_stopping_patience: 5
   save_model_every_epoch: false
+  save_steps: 0
   fp16: false
   gradient_accumulation_steps: 1
   use_multiprocessing: false
   learning_rate: 2.0e-04
   manual_seed: 42
   max_seq_length: 512
-  num_train_epochs: 100
+  num_train_epochs: 50
   pretrained_path: ./outputs/best_mlm_uspto_pretrain
-  output_dir: ./out/Parrot_train_in_USPTO_Condition_MIT
-  best_model_dir: ./outputs/Parrot_train_in_USPTO_Condition_MIT
+  output_dir: ./out/Parrot_train_in_USPTO_Condition_MIT_ep50
+  best_model_dir: ./outputs/Parrot_train_in_USPTO_Condition_MIT_ep50
   overwrite_output_dir: true
   regression: false
   thread_count: 8
   train_batch_size: 128
   eval_batch_size: 128
   wandb_project: Parrot_train_in_USPTO_Condition_MIT
-  warmup_ratio: 0.05
+  warmup_ratio: 0.02
   decoder_args:
     d_model: 256
     dim_feedforward: 256

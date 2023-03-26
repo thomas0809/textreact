@@ -8,8 +8,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def main(parser_args, debug):
-    config = yaml.load(open(parser_args.config_path, "r"),
-                       Loader=yaml.FullLoader)
+    config = yaml.load(open(parser_args.config_path, "r"), Loader=yaml.FullLoader)
     print('\n########################\nConfigs:\n########################\n')
     print(yaml.dump(config))
     print('########################\n')
@@ -23,10 +22,8 @@ def main(parser_args, debug):
 
     database_df, condition_label_mapping = load_dataset(**dataset_args)
     model_args['decoder_args'].update({
-        'tgt_vocab_size':
-        len(condition_label_mapping[0]),
-        'condition_label_mapping':
-        condition_label_mapping
+        'tgt_vocab_size': len(condition_label_mapping[0]),
+        'condition_label_mapping': condition_label_mapping
     })
 
     train_df = database_df.loc[database_df['dataset'] == 'train']
@@ -40,12 +37,17 @@ def main(parser_args, debug):
     eval_df.columns = ['text', 'labels']
     print('validation dataset number: {}'.format(len(eval_df)))
 
+    if model_args['model_type']:
+        model_type = model_args['model_type']
+    else:
+        model_type = 'bert'
+
     if model_args['pretrained_path']:
         pretrained_path = model_args['pretrained_path']
     else:
         pretrained_path = None
     model = ParrotConditionPredictionModel(
-        "bert",
+        model_type,
         pretrained_path,
         args=model_args,
         use_cuda=True if parser_args.gpu >= 0 else False,

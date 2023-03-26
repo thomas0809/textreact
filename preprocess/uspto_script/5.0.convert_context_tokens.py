@@ -41,9 +41,7 @@ if __name__ == '__main__':
     else:
         database = pd.read_csv(os.path.join(final_condition_data_path, database_fname), keep_default_na=False)
 
-    condition_cols = [
-        'catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2'
-    ]
+    condition_cols = ['catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2']
 
     all_idx2data, all_data2idx = get_condition2idx_mapping(database[condition_cols])
     all_idx_mapping_data_fpath = os.path.join(

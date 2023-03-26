@@ -27,14 +27,18 @@ def main(parser_args, debug=False):
         'condition_label_mapping': condition_label_mapping
     })
 
+    if model_args['model_type']:
+        model_type = model_args['model_type']
+    else:
+        model_type = 'bert'
+
     trained_path = model_args['best_model_dir']
     model = ParrotConditionPredictionModel(
-        "bert",
+        model_type,
         trained_path,
         args=model_args,
         use_cuda=True if parser_args.gpu >= 0 else False,
-        cuda_device=parser_args.gpu
-        )
+        cuda_device=parser_args.gpu)
 
     testset_args = config['testset_args']
     if 'dataset_root' in testset_args:

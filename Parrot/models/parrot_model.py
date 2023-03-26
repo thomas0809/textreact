@@ -19,22 +19,20 @@ from torch.nn.modules.normalization import LayerNorm
 from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm, trange
 from tqdm.contrib import tenumerate
-from transformers import Adafactor, AdamW, BertConfig, BertForSequenceClassification, get_constant_schedule, \
-    get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, \
-    get_cosine_with_hard_restarts_schedule_with_warmup, get_linear_schedule_with_warmup, \
+from transformers import Adafactor, AdamW
+from transformers import BertConfig, BertForSequenceClassification, BertTokenizer
+from transformers import get_constant_schedule, get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, \
+    get_linear_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, \
     get_polynomial_decay_schedule_with_warmup
 from simpletransformers.config.model_args import ClassificationArgs
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertModel
-from simpletransformers.classification.classification_model import (
-    MODELS_WITHOUT_SLIDING_WINDOW_SUPPORT,
-    MODELS_WITHOUT_CLASS_WEIGHTS_SUPPORT)
-from simpletransformers.classification.classification_utils import (
-    ClassificationDataset, )
+from simpletransformers.classification.classification_model import MODELS_WITHOUT_SLIDING_WINDOW_SUPPORT, \
+    MODELS_WITHOUT_CLASS_WEIGHTS_SUPPORT
+from simpletransformers.classification.classification_utils import ClassificationDataset
 import yaml
 
 from models.model_layer import PositionalEncoding, TokenEmbedding, TransformerDecoderLayer, TransformerDecoder
-
 from models.utils import ConditionWithTempDataset, analyze_subgraph_attention_with_condition, load_dataset, print_args, \
     viz_attention_reaction
 
@@ -205,6 +203,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         MODEL_CLASSES = {
             "bert": (BertConfig, ParrotConditionModel, SmilesTokenizer),
+            "scibert": (BertConfig, ParrotConditionModel, BertTokenizer)
         }
 
         if model_type not in MODEL_CLASSES.keys():
@@ -214,8 +213,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         decoder_args = args['decoder_args']
         try:
-            self.condition_label_mapping = decoder_args[
-                'condition_label_mapping']
+            self.condition_label_mapping = decoder_args['condition_label_mapping']
         except:
             print('Warning: condition_label_mapping is not set!')
 
@@ -224,11 +222,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         elif isinstance(args, ClassificationArgs):
             self.args = args
 
-        if (model_type in MODELS_WITHOUT_SLIDING_WINDOW_SUPPORT
-                and self.args.sliding_window):
-            raise ValueError(
-                "{} does not currently support sliding window".format(
-                    model_type))
+        if model_type in MODELS_WITHOUT_SLIDING_WINDOW_SUPPORT and self.args.sliding_window:
+            raise ValueError("{} does not currently support sliding window".format(model_type))
 
         if self.args.thread_count:
             torch.set_num_threads(self.args.thread_count)
@@ -267,8 +262,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         if 'output_attention' in args:
             self.config.update({'output_attention': args['output_attention']})
         if model_type in MODELS_WITHOUT_CLASS_WEIGHTS_SUPPORT and weight is not None:
-            raise ValueError(
-                "{} does not currently support class weights".format(model_type))
+            raise ValueError("{} does not currently support class weights".format(model_type))
         else:
             self.weight = weight
 
@@ -279,9 +273,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 else:
                     self.device = torch.device(f"cuda:{cuda_device}")
             else:
-                raise ValueError(
-                    "'use_cuda' set to True when cuda is unavailable."
-                    " Make sure CUDA is available or set use_cuda=False.")
+                raise ValueError("'use_cuda' set to True when cuda is unavailable."
+                                 " Make sure CUDA is available or set use_cuda=False.")
         else:
             self.device = "cpu"
         if model_name:
@@ -294,11 +287,9 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                         **kwargs,
                     )
                 else:
-                    self.model = model_class.from_pretrained(
-                        model_name, config=self.config, **kwargs)
+                    self.model = model_class.from_pretrained(model_name, config=self.config, **kwargs)
             else:
-                quantized_weights = torch.load(
-                    os.path.join(model_name, "pytorch_model.bin"))
+                quantized_weights = torch.load(os.path.join(model_name, "pytorch_model.bin"))
                 if self.weight:
                     self.model = model_class.from_pretrained(
                         None,
@@ -307,12 +298,10 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                         weight=torch.Tensor(self.weight).to(self.device),
                     )
                 else:
-                    self.model = model_class.from_pretrained(
-                        None, config=self.config, state_dict=quantized_weights)
+                    self.model = model_class.from_pretrained(None, config=self.config, state_dict=quantized_weights)
 
             if self.args.dynamic_quantize:
-                self.model = torch.quantization.quantize_dynamic(
-                    self.model, {torch.nn.Linear}, dtype=torch.qint8)
+                self.model = torch.quantization.quantize_dynamic(self.model, {torch.nn.Linear}, dtype=torch.qint8)
             if self.args.quantized_model:
                 self.model.load_state_dict(quantized_weights)
             if self.args.dynamic_quantize:
@@ -348,36 +337,17 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             pass
         else:
             self.args.vocab_path = None
-        if tokenizer_name in [
-            "vinai/bertweet-base",
-            "vinai/bertweet-covid19-base-cased",
-            "vinai/bertweet-covid19-base-uncased",
-        ]:
-            self.tokenizer = tokenizer_class.from_pretrained(
-                tokenizer_name,
-                do_lower_case=self.args.do_lower_case,
-                normalization=True,
-                **kwargs,
-            )
-        elif not self.args.vocab_path and not tokenizer_name in [
-            "vinai/bertweet-base",
-            "vinai/bertweet-covid19-base-cased",
-            "vinai/bertweet-covid19-base-uncased",
-        ]:
-            self.tokenizer = tokenizer_class.from_pretrained(
-                tokenizer_name,
-                do_lower_case=self.args.do_lower_case,
-                **kwargs)
+
+        if not self.args.vocab_path:
+            self.tokenizer = tokenizer_class.from_pretrained(tokenizer_name, **kwargs)
 
         elif self.args.vocab_path:
-            self.tokenizer = tokenizer_class(self.args.vocab_path,
-                                             do_lower_case=False)
+            self.tokenizer = tokenizer_class(self.args.vocab_path, do_lower_case=False)
             model_to_resize = self.model.module if hasattr(self.model, "module") else self.model
             model_to_resize.resize_token_embeddings(len(self.tokenizer))
 
         if self.args.special_tokens_list:
-            self.tokenizer.add_tokens(self.args.special_tokens_list,
-                                      special_tokens=True)
+            self.tokenizer.add_tokens(self.args.special_tokens_list, special_tokens=True)
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.args.model_name = model_name
@@ -386,9 +356,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         self.args.tokenizer_type = tokenizer_type
 
         if model_type in ["camembert", "xlmroberta"]:
-            warnings.warn(
-                f"use_multiprocessing automatically disabled as {model_type}"
-                " fails when using multiprocessing for feature conversion.")
+            warnings.warn(f"use_multiprocessing automatically disabled as {model_type}"
+                          " fails when using multiprocessing for feature conversion.")
             self.args.use_multiprocessing = False
 
         if self.args.wandb_project and not wandb_available:
@@ -474,28 +443,27 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             show_running_loss = False
 
         if self.args.evaluate_during_training and eval_df is None:
-            raise ValueError(
-                "evaluate_during_training is enabled but eval_df is not specified."
-                " Pass eval_df to model.train_model() if using evaluate_during_training."
-            )
+            raise ValueError("evaluate_during_training is enabled but eval_df is not specified."
+                             " Pass eval_df to model.train_model() if using evaluate_during_training.")
 
         if not output_dir:
             output_dir = self.args.output_dir
 
         if os.path.exists(output_dir) and os.listdir(output_dir) and not self.args.overwrite_output_dir:
-            raise ValueError(
-                "Output directory ({}) already exists and is not empty."
-                " Set overwrite_output_dir: True to automatically overwrite.".format(output_dir))
+            raise ValueError("Output directory ({}) already exists and is not empty."
+                             " Set overwrite_output_dir: True to automatically overwrite.".format(output_dir))
         self._move_model_to_device()
 
-        # 数据集加载只保留一种加载方式，其余全部删除
         train_examples = (
             train_df["text"].astype(str).tolist(),
             train_df["labels"].tolist(),
         )
 
-        train_dataset = self.load_and_cache_examples(train_examples, verbose=verbose, no_cache=True)
+        print('loading train dataset')
+        train_dataset = self.load_and_cache_examples(train_examples, verbose=verbose)
         print('loaded train dataset {}'.format(train_dataset.examples['input_ids'].shape[0]))
+        # print(train_examples[0][0])
+        # print(train_dataset[0])
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(
             train_dataset,
@@ -571,20 +539,14 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         if not self.args.train_custom_parameters_only:
             optimizer_grouped_parameters.extend([
                 {
-                    "params": [
-                        p for n, p in model.named_parameters()
-                        if n not in custom_parameter_names and not any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay":
-                        args.weight_decay,
+                    "params": [p for n, p in model.named_parameters()
+                               if n not in custom_parameter_names and not any(nd in n for nd in no_decay)],
+                    "weight_decay": args.weight_decay,
                 },
                 {
-                    "params": [
-                        p for n, p in model.named_parameters()
-                        if n not in custom_parameter_names and any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay":
-                        0.0,
+                    "params": [p for n, p in model.named_parameters()
+                               if n not in custom_parameter_names and any(nd in n for nd in no_decay)],
+                    "weight_decay":0.0,
                 },
             ])
 
@@ -697,7 +659,11 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         if args.wandb_project:
             if not wandb.setup().settings.sweep_id:
                 logger.info(" Initializing WandB run for training.")
-                wandb.init(project=args.wandb_project, config={**asdict(args)}, **args.wandb_kwargs, )
+                wandb.init(
+                    project=args.wandb_project,
+                    config={**asdict(args)},
+                    **args.wandb_kwargs
+                )
                 wandb.run._label(repo="simpletransformers")
             wandb.watch(self.model)
 
@@ -809,6 +775,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 self.save_model(output_dir_current, optimizer, scheduler, results=results)
 
                 training_progress_scores["global_step"].append(global_step)
+                training_progress_scores["epoch"].append(epoch_number)
                 training_progress_scores["train_loss"].append(current_loss)
                 for key in results:
                     training_progress_scores[key].append(results[key])
@@ -870,14 +837,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         self._move_model_to_device()
 
-        result = self.evaluate(
-            eval_df,
-            output_dir,
-            verbose=verbose,
-            silent=silent,
-            wandb_log=wandb_log,
-            **kwargs,
-        )
+        result = self.evaluate(eval_df, output_dir, verbose=verbose, silent=silent, wandb_log=wandb_log, **kwargs)
         self.results.update(result)
 
         if verbose:
@@ -905,11 +865,8 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             eval_df["labels"].tolist(),
         )
         os.makedirs(eval_output_dir, exist_ok=True)
-        eval_dataset = self.load_and_cache_examples(eval_examples,
-                                                    evaluate=True,
-                                                    verbose=verbose,
-                                                    silent=silent,
-                                                    no_cache=True)
+        eval_dataset = self.load_and_cache_examples(
+            eval_examples, evaluate=True, verbose=verbose, silent=silent, no_cache=True)
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset,
                                      sampler=eval_sampler,
@@ -945,21 +902,11 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                 if self.args.fp16:
                     with amp.autocast():
                         outputs = self._calculate_loss(
-                            model,
-                            inputs,
-                            loss_fct=None,
-                            num_labels=label_len,
-                            args=self.args,
-                        )
+                            model, inputs, loss_fct=None, num_labels=label_len, args=self.args)
                         tmp_eval_loss, logits = outputs[:2]
                 else:
                     outputs = self._calculate_loss(
-                        model,
-                        inputs,
-                        loss_fct=None,
-                        num_labels=label_len,
-                        args=self.args,
-                    )
+                        model, inputs, loss_fct=None, num_labels=label_len, args=self.args)
                     tmp_eval_loss, _ = outputs[:2]
                 eval_loss += tmp_eval_loss.item()
                 if args.use_temperature:
@@ -989,6 +936,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
         training_progress_scores = {
             "global_step": [],
+            "epoch": [],
             "train_loss": [],
             "eval_loss": [],
             # "train_ppl": [],
@@ -1059,6 +1007,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         memory_key_padding_mask = inputs['memory_key_padding_mask']
         del inputs['memory_key_padding_mask']
         memory = model.bert(**inputs)[0]
+
         ys = torch.ones(memory.size(0), 1).fill_(start_symbol).type(torch.long).to(self.device)
         cumul_score = torch.ones(memory.size(0)).type(torch.float).to(self.device).view(-1, 1)
         ys = ys.transpose(0, 1)
@@ -1082,11 +1031,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
             ys = ys.transpose(0, 1)
             cumul_score = cumul_score.transpose(0, 1)
             tgt_mask = (self._generate_square_subsequent_mask(ys.size(1)).type(torch.bool)).to(self.device)
-            out, _ = model.decode(
-                ys,
-                memory,
-                tgt_mask,
-                memory_key_padding_mask=memory_key_padding_mask)
+            out, _ = model.decode(ys, memory, tgt_mask, memory_key_padding_mask=memory_key_padding_mask)
             pred = model.generator(out[:, -1])
             prob = torch.softmax(pred, dim=1)
             if self.args.use_temperature:
@@ -1182,12 +1127,6 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
 
             if self.args.use_temperature:
                 previous_outs[:, j] = _previous_outs[_idx, j]
-
-        # if isinstance(beam, int):
-        #     pass
-
-        # elif isinstance(beam, dict):
-        #     pass
 
         # else:
         #     raise ValueError('beam should be  \'int\' or \'dict\'.')
@@ -1328,10 +1267,11 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
                     'memory_key_padding_mask'
                 ]
                 _inputs = {key: inputs[key] for key in encoder_input_keys}
-                search_outputs = self.translate_beam_search(model,
-                                                            _inputs,
-                                                            max_len=label_len,
-                                                            beam=beam)
+                if self.args.fp16:
+                    with amp.autocast():
+                        search_outputs = self.translate_beam_search(model, _inputs, max_len=label_len, beam=beam)
+                else:
+                    search_outputs = self.translate_beam_search(model, _inputs, max_len=label_len, beam=beam)
                 tgt_tokens = search_outputs[0]
                 scores = search_outputs[1]
                 scores = torch.log(scores)
@@ -1858,10 +1798,8 @@ if __name__ == '__main__':
     dataset_args = config['dataset_args']
     dataset_df, condition_label_mapping = load_dataset(**dataset_args)
     model_args['decoder_args'].update({
-        'tgt_vocab_size':
-            len(condition_label_mapping[0]),
-        'condition_label_mapping':
-            condition_label_mapping
+        'tgt_vocab_size': len(condition_label_mapping[0]),
+        'condition_label_mapping': condition_label_mapping
     })
     model = ParrotConditionPredictionModel("bert",
                                            model_args['best_model_dir'],
