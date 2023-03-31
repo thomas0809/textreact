@@ -86,9 +86,9 @@ if __name__ == '__main__':
 
     query_fps, query_id = compute_reaction_fingerprints(test_df['canonical_rxn']), test_df['id']
     rank = index_and_search(train_fps, query_fps)
-    result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
-    with open('test_nn_rxnfp_l2.json', 'w') as f:
-        json.dump(result, f)
+    # result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
+    # with open('test_nn_rxnfp_l2.json', 'w') as f:
+    #     json.dump(result, f)
 
     cnt = {x: 0 for x in [1, 3, 5, 10, 15]}
     for i, nn in enumerate(rank):

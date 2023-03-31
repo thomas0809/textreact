@@ -1223,6 +1223,7 @@ class ParrotConditionPredictionModel(SmilesClassificationModel):
         )
 
         test_dataset = self.load_and_cache_examples(test_examples,
+                                                    evaluate=True,
                                                     verbose=verbose,
                                                     no_cache=True)
         print('loaded test dataset {}'.format(

@@ -27,7 +27,7 @@ def main(parser_args, debug=False):
         'condition_label_mapping': condition_label_mapping
     })
 
-    if model_args['model_type']:
+    if 'model_type' in model_args:
         model_type = model_args['model_type']
     else:
         model_type = 'bert'

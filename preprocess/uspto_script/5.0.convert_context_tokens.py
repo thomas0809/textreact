@@ -4,6 +4,7 @@ from tqdm import tqdm
 import pickle
 
 BOS, EOS, PAD, MASK = '[BOS]', '[EOS]', '[PAD]', '[MASK]'
+UNK, SEP = '[UNK]', '[SEP]'
 
 
 def get_condition2idx_mapping(all_condition_data: pd.DataFrame):
@@ -16,6 +17,17 @@ def get_condition2idx_mapping(all_condition_data: pd.DataFrame):
     idx2data = {i: x for i, x in enumerate(col_unique_data)}
     data2idx = {x: i for i, x in enumerate(col_unique_data)}
     return idx2data, data2idx
+
+
+def get_condition_vocab(all_condition_data: pd.DataFrame):
+    col_unique_data = []
+    for col in all_condition_data.columns.tolist():
+        one_col_unique = list(set(all_condition_data[col].tolist()))
+        col_unique_data.extend(one_col_unique)
+    col_unique_data = list(set(col_unique_data))
+    col_unique_data.sort()
+    vocab = [PAD, BOS, EOS, MASK, UNK, SEP] + col_unique_data
+    return vocab
 
 
 if __name__ == '__main__':
@@ -42,6 +54,11 @@ if __name__ == '__main__':
         database = pd.read_csv(os.path.join(final_condition_data_path, database_fname), keep_default_na=False)
 
     condition_cols = ['catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2']
+
+    vocab = get_condition_vocab(database[condition_cols])
+    vocab_path = os.path.join(final_condition_data_path, 'vocab.txt')
+    with open(vocab_path, 'w') as f:
+        f.write('\n'.join(vocab))
 
     all_idx2data, all_data2idx = get_condition2idx_mapping(database[condition_cols])
     all_idx_mapping_data_fpath = os.path.join(
