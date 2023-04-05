@@ -1,5 +1,6 @@
 from collections import defaultdict
 import os
+import json
 import pandas as pd
 import random
 from tqdm import tqdm
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     database = database[columns]
     database_sample = database.sample(frac=1, random_state=seed)
 
+    # Random split (no rxn overlap)
     can_rxn2idx_dict = defaultdict(list)
     for idx, row in tqdm(database_sample.iterrows(), total=len(database_sample)):
         can_rxn2idx_dict[row.canonical_rxn].append(idx)
@@ -55,3 +57,23 @@ if __name__ == '__main__':
     database_sample.loc[val_idx, 'dataset'] = 'val'
     database_sample.loc[test_idx, 'dataset'] = 'test'
     database_sample.to_csv(os.path.join(final_condition_data_path, 'USPTO_condition.csv'), index=False)
+
+    # Time split
+    with open('patent_info.json') as f:
+        patent_info = json.load(f)
+    train_idx, val_idx, test_idx = [], [], []
+    for idx, patent_id in enumerate(database_sample['source']):
+        if patent_info[patent_id] in [2015, 2016]:
+            test_idx.append(idx)
+        elif patent_info[patent_id] in [2013, 2014]:
+            val_idx.append(idx)
+        else:
+            train_idx.append(idx)
+    year_data_path = 'USPTO_condition_year'
+    os.makedirs(year_data_path, exist_ok=True)
+    train_df = database_sample.iloc[train_idx]
+    train_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_train.csv'), index=False)
+    val_df = database_sample.iloc[val_idx]
+    val_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_val.csv'), index=False)
+    test_df = database_sample.iloc[test_idx]
+    test_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_test.csv'), index=False)

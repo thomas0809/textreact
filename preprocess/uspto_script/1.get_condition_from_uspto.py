@@ -4,14 +4,18 @@ from collections import OrderedDict, Counter
 import pandas as pd
 import os
 import copy
+import json
 
 from utils import get_writer
 
 
 patent_cnt = Counter()
+patent_info = {}
 CONDITION_DICT = {
         'id': [],
         'source': [],
+        'year': [],
+        'patent_type': [],
         'rxn_smiles': [],
         'solvent': [],
         'catalyst': [],
@@ -19,6 +23,8 @@ CONDITION_DICT = {
     }
 CORPUS_DICT = {
         'id': [],
+        'year': [],
+        'patent_type': [],
         'xml': [],
         'heading_text': [],
         'paragraph_text': [],
@@ -52,6 +58,12 @@ def read_xml2dict(xml_fpath):
         patent_id = rxn_data['dl:source']['dl:documentId']
         heading_text = rxn_data['dl:source'].get('dl:headingText', '')
         paragraph_text = rxn_data['dl:source'].get('dl:paragraphText', '')
+        year = os.path.dirname(xml_fpath).split('/')[-1]
+        patent_type = 'grant' if 'grants' in xml_fpath else 'application'
+        patent_info[patent_id] = {
+            'year': int(year),
+            'type': patent_type
+        }
 
         s_list = []
         c_list = []
@@ -108,11 +120,15 @@ def read_xml2dict(xml_fpath):
         reaction_and_condition_dict['rxn_smiles'].append(rxn_data['dl:reactionSmiles'])
         reaction_and_condition_dict['source'].append(patent_id)
         reaction_and_condition_dict['id'].append(rxn_id)
+        reaction_and_condition_dict['year'].append(year)
+        reaction_and_condition_dict['patent_type'].append(patent_type)
 
         corpus_dict['id'].append(rxn_id)
         corpus_dict['xml'].append(os.path.basename(xml_fpath))
         corpus_dict['heading_text'].append(heading_text)
         corpus_dict['paragraph_text'].append(paragraph_text)
+        corpus_dict['year'].append(year)
+        corpus_dict['patent_type'].append(patent_type)
 
     return reaction_and_condition_dict, corpus_dict
 
@@ -147,8 +163,11 @@ if __name__ == '__main__':
             print(f'step {i}: {cnt} data')
     fout.close()
     corpus_fout.close()
-    # reaction_and_condition_df = pd.read_csv('../../dataset/source_dataset/uspto_rxn_condition.csv')
-    # reaction_and_condition_df.columns = df.columns
-    # reaction_and_condition_df.to_csv('../../dataset/source_dataset/uspto_rxn_condition_done.csv')
+
+    for patent_id in patent_cnt:
+        patent_info[patent_id]['num_rxn'] = patent_cnt[patent_id]
+    with open('patent_info.json', 'w') as f:
+        json.dump(patent_info, f)
+
     print('Done')
     
