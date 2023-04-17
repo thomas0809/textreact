@@ -9,13 +9,12 @@ import pandas as pd
 import rdkit.Chem as Chem
 import torch
 from torch.utils.data import DataLoader, Dataset
-from transformers import DefaultDataCollator, DataCollatorWithPadding
 
 
 CONDITION_COLS = ['catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2']
 
 
-class ReactionConditionDataset(Dataset):
+class BaseDataset(Dataset):
 
     def __init__(self, args, data_file, enc_tokenizer, dec_tokenizer, split='train'):
         super().__init__()
@@ -23,13 +22,12 @@ class ReactionConditionDataset(Dataset):
         self.enc_tokenizer = enc_tokenizer
         self.dec_tokenizer = dec_tokenizer
         self.data_df = pd.read_csv(data_file, keep_default_na=False)
+        self.indices = self.data_df[args.id_field].tolist()
         self.corpus = None
         self.neighbors = None
-        if args.debug:
-            self.data_df = self.data_df[:1000]
         self.name = split
         self.split = split
-        self.collator = ReactionConditionCollator(args, enc_tokenizer, return_label=(split != 'test'))
+        self.collator = DataCollator(args, enc_tokenizer, dec_tokenizer, return_label=(split != 'test'))
 
     def __len__(self):
         return len(self.data_df)
@@ -37,70 +35,55 @@ class ReactionConditionDataset(Dataset):
     def load_corpus(self, corpus, nn_file):
         self.corpus = corpus
         with open(nn_file) as f:
-            self.neighbors = json.load(f)
+            nn_data = json.load(f)
+            self.neighbors = {ex['id']: ex['nn'] for ex in nn_data}
 
-    def __getitem__(self, idx):
-        row = self.data_df.iloc[idx]
-        rxn_smiles = row['canonical_rxn']
-        # Data augmentation: shuffle the rxn smiles
-        if self.split == 'train' and self.args.shuffle_smiles:
-            rxn_smiles = random_shuffle_reaction_smiles(rxn_smiles)
-        # Collect text from nearest neighbors
-        if self.args.num_neighbors > 0:
-            neighbors_texts = [self.corpus[rxn_id] for rxn_id in self.neighbors[idx]['nn']]
-            if self.split == 'train':
-                if random.random() < 0.2:
-                    selected_texts = neighbors_texts[:self.args.num_neighbors]
-                else:
-                    selected_texts = random.sample(neighbors_texts, k=self.args.num_neighbors)
+    def get_neighbor_text(self, idx):
+        rxn_id = self.indices[idx]
+        neighbors_ids = self.neighbors[rxn_id]
+        if self.split == 'train':
+            if self.args.use_gold_neighbor:
+                if rxn_id in neighbors_ids:
+                    neighbors_ids.remove(rxn_id)
+                if rxn_id in self.corpus:
+                    neighbors_ids = [rxn_id] + neighbors_ids
+            neighbors_texts = [self.corpus[idx] for idx in neighbors_ids[:self.args.max_num_neighbors]]
+            if random.random() < self.args.random_neighbor_ratio:
+                selected_texts = random.sample(neighbors_texts, k=self.args.num_neighbors)
             else:
-                if self.args.skip_gold_neighbor:
-                    neighbors_texts = [self.corpus[rxn_id]
-                                       for rxn_id in self.neighbors[idx]['nn'] if rxn_id != row['id']]
                 selected_texts = neighbors_texts[:self.args.num_neighbors]
-            # nn_text = ' '.join(selected_texts)
-            nn_text = ''
-            for i, text in enumerate(selected_texts):
-                nn_text += f' ({i}) ' + text
         else:
-            nn_text = None
-        # Encoder input
-        enc_input = self.enc_tokenizer(
-            rxn_smiles, text_pair=nn_text, truncation=False, return_token_type_ids=False, verbose=False)
-        # Truncate
-        max_length = self.args.max_length
-        enc_input = {k: v[:max_length] for k, v in enc_input.items()}
-        # MLM
-        additional = {}
-        if self.args.mlm and self.split == 'train':
-            origin_ids = copy.deepcopy(enc_input['input_ids'])
-            input_ids = copy.deepcopy(enc_input['input_ids'])
-            input_len = len(input_ids)
-            mlm_labels = [-100] * input_len
-            num_tokens_to_mask = int(len(input_ids) * self.args.mlm_ratio)
-            for i in range(100):
-                k = np.random.poisson(lam=3)
-                if k == 0 or k > min(10, input_len) or k > num_tokens_to_mask:
-                    continue
-                start = random.randrange(input_len - k)
-                end = start + k
-                span_ids = origin_ids[start:end]
-                input_ids = input_ids[:start] + [self.enc_tokenizer.mask_token_id] * k + input_ids[end:]
-                mlm_labels = mlm_labels[:start] + span_ids + mlm_labels[end:]
-                num_tokens_to_mask -= k
-                if num_tokens_to_mask < 0:
-                    break
-            input_ids, position_ids, mlm_labels = self._reorder_masked_sequence(input_ids, mlm_labels)
-            enc_input['input_ids'] = input_ids
-            enc_input['position_ids'] = position_ids
-            additional['mlm_labels'] = mlm_labels
-        # Decoder input
-        if self.split != 'test':
-            conditions = row[CONDITION_COLS].tolist()
-            dec_input = self.dec_tokenizer(conditions, return_token_type_ids=False)
-        else:
-            dec_input = {}
-        return idx, enc_input, dec_input, additional
+            if self.args.skip_gold_neighbor and rxn_id in neighbors_ids:
+                neighbors_ids.remove(rxn_id)
+            selected_texts = [self.corpus[idx] for idx in neighbors_ids[:self.args.num_neighbors]]
+        nn_text = ''
+        for i, text in enumerate(selected_texts):
+            nn_text += f' ({i}) ' + text
+        return nn_text
+
+    def apply_mlm(self, enc_input, output):
+        origin_ids = copy.deepcopy(enc_input['input_ids'])
+        input_ids = copy.deepcopy(enc_input['input_ids'])
+        input_len = len(input_ids)
+        mlm_labels = [-100] * input_len
+        num_tokens_to_mask = int(len(input_ids) * self.args.mlm_ratio)
+        for i in range(100):
+            k = np.random.poisson(lam=3)
+            if k == 0 or k > min(10, input_len) or k > num_tokens_to_mask:
+                continue
+            start = random.randrange(input_len - k)
+            end = start + k
+            span_ids = origin_ids[start:end]
+            input_ids = input_ids[:start] + [self.enc_tokenizer.mask_token_id] * k + input_ids[end:]
+            mlm_labels = mlm_labels[:start] + span_ids + mlm_labels[end:]
+            num_tokens_to_mask -= k
+            if num_tokens_to_mask < 0:
+                break
+        input_ids, position_ids, mlm_labels = self._reorder_masked_sequence(input_ids, mlm_labels)
+        enc_input['input_ids'] = input_ids
+        enc_input['position_ids'] = position_ids
+        output['mlm_labels'] = mlm_labels
+        return enc_input, output
 
     def _reorder_masked_sequence(self, input_ids, mlm_labels):
         position_ids_masked, position_ids_unmasked = [], []
@@ -117,33 +100,105 @@ class ReactionConditionDataset(Dataset):
                 position_ids_unmasked.append(i)
         return input_ids_masked + input_ids_unmasked, position_ids_masked + position_ids_unmasked, mlm_labels_masked
 
+    def prepare_encoder_input(self, idx):
+        raise NotImplementedError
 
-class ReactionConditionCollator:
+    def prepare_decoder_input(self, idx):
+        raise NotImplementedError
 
-    def __init__(self, args, enc_tokenizer, return_label=True):
+    def __getitem__(self, idx, debug=False):
+        enc_input, dec_input, outputs = {}, {}, {}
+        # Encoder input
+        enc_input = self.prepare_encoder_input(idx)
+        enc_input = {k: v[:self.args.max_length] for k, v in enc_input.items()}
+        # MLM
+        if self.args.mlm and self.split == 'train' and not debug:
+            enc_input, outputs = self.apply_mlm(enc_input, outputs)
+        # Decoder input
+        dec_input = self.prepare_decoder_input(idx)
+        dec_input = {k: v[:self.args.max_dec_length] for k, v in dec_input.items()}
+        # Merge
+        inputs = enc_input.copy()
+        inputs.update({f'decoder_{k}': v for k, v in dec_input.items()})
+        return idx, inputs, outputs
+
+    def print_example(self, idx=0):
+        idx, inputs, outputs = self.__getitem__(idx, debug=True)
+        # print(inputs)
+        print(self.enc_tokenizer.decode(inputs['input_ids']))
+        print(self.dec_tokenizer.decode(inputs['decoder_input_ids']))
+
+
+class ReactionConditionDataset(BaseDataset):
+
+    def prepare_encoder_input(self, idx):
+        row = self.data_df.iloc[idx]
+        rxn_smiles = row['canonical_rxn']
+        # Data augmentation
+        if self.split == 'train' and self.args.shuffle_smiles:
+            rxn_smiles = random_shuffle_reaction_smiles(rxn_smiles)
+        nn_text = self.get_neighbor_text(idx) if self.args.num_neighbors > 0 else None
+        enc_input = self.enc_tokenizer(
+            rxn_smiles, text_pair=nn_text, truncation=False, return_token_type_ids=False, verbose=False)
+        return enc_input
+
+    def prepare_decoder_input(self, idx):
+        row = self.data_df.iloc[idx]
+        dec_input = {}
+        if self.split != 'test':
+            conditions = row[CONDITION_COLS].tolist()
+            dec_input = self.dec_tokenizer(conditions, return_token_type_ids=False)
+        return dec_input
+
+
+class RetrosynthesisDataset(BaseDataset):
+
+    def prepare_encoder_input(self, idx):
+        row = self.data_df.iloc[idx]
+        product_smiles = row['product_smiles']
+        # Data augmentation
+        if self.split == 'train' and self.args.shuffle_smiles:
+            product_smiles = random_smiles(product_smiles)
+        nn_text = self.get_neighbor_text(idx) if self.args.num_neighbors > 0 else None
+        enc_input = self.enc_tokenizer(
+            product_smiles, text_pair=nn_text, truncation=False, return_token_type_ids=False, verbose=False)
+        return enc_input
+
+    def prepare_decoder_input(self, idx):
+        row = self.data_df.iloc[idx]
+        dec_input = {}
+        if self.split != 'test':
+            dec_input = self.dec_tokenizer(
+                row['reactant_smiles'], truncation=False,  return_token_type_ids=False, verbose=False)
+        return dec_input
+
+
+class DataCollator:
+
+    def __init__(self, args, enc_tokenizer, dec_tokenizer, return_label=True):
         self.args = args
-        self.enc_tokenizer=enc_tokenizer
+        self.enc_tokenizer = enc_tokenizer
+        self.dec_tokenizer = dec_tokenizer
         self.return_label = return_label
 
     def __call__(self, features):
         indices = [feat[0] for feat in features]
-        enc_inputs = [feat[1] for feat in features]
-        dec_inputs = [feat[2] for feat in features]
-        additionals = [feat[3] for feat in features]
+        inputs = [feat[1] for feat in features]
+        outputs = [feat[2] for feat in features]
         batch_in = {
-            'input_ids': self.pad_sequences([enc_input['input_ids'] for enc_input in enc_inputs],
-                                            self.enc_tokenizer.pad_token_id),
-            'attention_mask': self.pad_sequences([enc_input['attention_mask'] for enc_input in enc_inputs], 0)
+            'input_ids': self.pad_sequences([feat['input_ids'] for feat in inputs], self.enc_tokenizer.pad_token_id),
+            'attention_mask': self.pad_sequences([feat['attention_mask'] for feat in inputs], 0)
         }
-        if 'position_ids' in enc_inputs[0]:
-            batch_in['position_ids'] = self.pad_sequences([enc_input['position_ids'] for enc_input in enc_inputs], 0)
+        if 'position_ids' in inputs[0]:
+            batch_in['position_ids'] = self.pad_sequences([feat['position_ids'] for feat in inputs], 0)
         if self.return_label:
-            batch_in['decoder_input_ids'] = torch.tensor([dec_input['input_ids'] for dec_input in dec_inputs])
-            batch_in['decoder_attention_mask'] = torch.tensor([dec_input['attention_mask'] for dec_input in dec_inputs])
+            batch_in['decoder_input_ids'] = self.pad_sequences([feat['decoder_input_ids'] for feat in inputs],
+                                                               self.dec_tokenizer.pad_token_id)
+            batch_in['decoder_attention_mask'] = self.pad_sequences([feat['decoder_attention_mask'] for feat in inputs],
+                                                                    0)
         batch_out = {}
-        if 'mlm_labels' in additionals[0]:
-            batch_out['mlm_labels'] = self.pad_sequences(
-                [additional['mlm_labels'] for additional in additionals], pad_id=-100)
+        if 'mlm_labels' in outputs[0]:
+            batch_out['mlm_labels'] = self.pad_sequences([feat['mlm_labels'] for feat in outputs], pad_id=-100)
         return indices, batch_in, batch_out
 
     def pad_sequences(self, sequences, pad_id, max_length=None, return_tensor=True):

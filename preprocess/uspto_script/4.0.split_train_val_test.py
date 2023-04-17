@@ -52,7 +52,7 @@ if __name__ == '__main__':
                 train_idx += idx_list
         else:
             train_idx += idx_list
-    
+
     database_sample.loc[train_idx, 'dataset'] = 'train'
     database_sample.loc[val_idx, 'dataset'] = 'val'
     database_sample.loc[test_idx, 'dataset'] = 'test'
@@ -63,13 +63,35 @@ if __name__ == '__main__':
         patent_info = json.load(f)
     train_idx, val_idx, test_idx = [], [], []
     for idx, patent_id in enumerate(database_sample['source']):
-        if patent_info[patent_id] in [2015, 2016]:
+        if patent_info[patent_id]['year'] in [2016]:
             test_idx.append(idx)
-        elif patent_info[patent_id] in [2013, 2014]:
+        elif patent_info[patent_id]['year'] in [2015]:
             val_idx.append(idx)
         else:
             train_idx.append(idx)
     year_data_path = 'USPTO_condition_year'
+    os.makedirs(year_data_path, exist_ok=True)
+    train_df = database_sample.iloc[train_idx]
+    train_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_train.csv'), index=False)
+    val_df = database_sample.iloc[val_idx]
+    val_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_val.csv'), index=False)
+    test_df = database_sample.iloc[test_idx]
+    test_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_test.csv'), index=False)
+
+    # Grant time split
+    with open('patent_info.json') as f:
+        patent_info = json.load(f)
+    train_idx, val_idx, test_idx = [], [], []
+    for idx, patent_id in enumerate(database_sample['source']):
+        if patent_info[patent_id]['type'] != 'grant':
+            continue
+        if patent_info[patent_id]['year'] in [2016]:
+            test_idx.append(idx)
+        elif patent_info[patent_id]['year'] in [2015]:
+            val_idx.append(idx)
+        else:
+            train_idx.append(idx)
+    year_data_path = 'USPTO_condition_grant_year'
     os.makedirs(year_data_path, exist_ok=True)
     train_df = database_sample.iloc[train_idx]
     train_df.to_csv(os.path.join(year_data_path, 'USPTO_condition_train.csv'), index=False)

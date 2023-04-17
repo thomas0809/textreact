@@ -9,7 +9,7 @@ from rxnfp.models import SmilesLanguageModelingModel
 def main(parser_args, debug):
     train_args = yaml.load(open(parser_args.config_path, "r"),
                            Loader=yaml.FullLoader)
-    vocab_path = './dataset/pretrain_data/vocab.txt'
+    vocab_path = './dataset/pretrain_data/vocab_smiles.txt'
     train_file = train_args['train_file']
     eval_file = train_args['eval_file']
     if not os.path.exists(vocab_path):

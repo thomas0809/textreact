@@ -27,6 +27,6 @@ output_dir: ./out/rcm_model_pretrain
 best_model_dir: ./outputs/best_rcm_model_pretrain
 overwrite_output_dir: true
 train_batch_size: 32
-vocab_path: ./dataset/pretrain_data/vocab.txt
+vocab_path: ./dataset/pretrain_data/vocab_smiles.txt
 wandb_project: uspto_rxn_center_modeling_remapped
 database_file: ./dataset/pretrain_data/rxn_center_modeling.pkl

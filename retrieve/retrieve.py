@@ -22,7 +22,7 @@ def reaction_similarity(smiles1=None, smiles2=None, fp1=None, fp2=None):
         fp2 = reaction_fingerprint(smiles2)
     assert fp1 is not None
     assert fp2 is not None
-    return DataStructs.TanimotoSimilarity(fp1,fp2)
+    return DataStructs.TanimotoSimilarity(fp1, fp2)
 
 
 def reaction_similarity_fp_smiles(fp, smiles):

@@ -13,17 +13,19 @@ import torch.distributed as dist
 import pytorch_lightning as pl
 from pytorch_lightning import LightningModule, LightningDataModule
 from pytorch_lightning.strategies.ddp import DDPStrategy
-from transformers import get_scheduler, EncoderDecoderModel, AutoTokenizer
+from transformers import get_scheduler, EncoderDecoderModel, EncoderDecoderConfig, AutoTokenizer, AutoConfig, AutoModel
 from transformers.models.bert.modeling_bert import BertLMPredictionHead
 
-from textreact.tokenizer import ReactionConditionTokenizer
-from textreact.dataset import ReactionConditionDataset, read_corpus, generate_train_label_corpus
-from textreact.evaluate import evaluate_reaction_condition
+from textreact.tokenizer import get_tokenizers
+from textreact.model import get_model, get_mlm_head
+from textreact.dataset import ReactionConditionDataset, RetrosynthesisDataset, read_corpus, generate_train_label_corpus
+from textreact.evaluate import evaluate_reaction_condition, evaluate_retrosynthesis
 import textreact.utils as utils
 
 
 def get_args(notebook=False):
     parser = argparse.ArgumentParser()
+    parser.add_argument('--task', type=str, default='condition')
     parser.add_argument('--do_train', action='store_true')
     parser.add_argument('--do_valid', action='store_true')
     parser.add_argument('--do_test', action='store_true')
@@ -33,8 +35,12 @@ def get_args(notebook=False):
     parser.add_argument('--print_freq', type=int, default=200)
     parser.add_argument('--debug', action='store_true')
     # Model
-    parser.add_argument('--encoder', type=str, default='allenai/scibert_scivocab_uncased')
-    parser.add_argument('--decoder', type=str, default='prajjwal1/bert-mini')
+    parser.add_argument('--encoder', type=str, default=None)
+    parser.add_argument('--decoder', type=str, default=None)
+    parser.add_argument('--encoder_pretrained', action='store_true')
+    parser.add_argument('--decoder_pretrained', action='store_true')
+    parser.add_argument('--share_embedding', action='store_true')
+    parser.add_argument('--encoder_tokenizer', type=str, default='text')
     # Data
     parser.add_argument('--data_path', type=str, default=None)
     parser.add_argument('--train_file', type=str, default=None)
@@ -44,15 +50,20 @@ def get_args(notebook=False):
     parser.add_argument('--corpus_file', type=str, default=None)
     parser.add_argument('--train_label_corpus', action='store_true')
     parser.add_argument('--cache_path', type=str, default=None)
+    parser.add_argument('--id_field', type=str, default='id')
     parser.add_argument('--nn_path', type=str, default=None)
     parser.add_argument('--train_nn_file', type=str, default=None)
     parser.add_argument('--valid_nn_file', type=str, default=None)
     parser.add_argument('--test_nn_file', type=str, default=None)
     parser.add_argument('--max_length', type=int, default=128)
+    parser.add_argument('--max_dec_length', type=int, default=128)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--shuffle_smiles', action='store_true')
     parser.add_argument('--num_neighbors', type=int, default=-1)
     parser.add_argument('--skip_gold_neighbor', action='store_true')
+    parser.add_argument('--use_gold_neighbor', action='store_true')
+    parser.add_argument('--max_num_neighbors', type=int, default=10)
+    parser.add_argument('--random_neighbor_ratio', type=float, default=0.8)
     parser.add_argument('--mlm', action='store_true')
     parser.add_argument('--mlm_ratio', type=float, default=0.15)
     parser.add_argument('--mlm_layer', type=str, default='linear')
@@ -67,12 +78,13 @@ def get_args(notebook=False):
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1)
     parser.add_argument('--load_path', type=str, default=None)
     parser.add_argument('--eval_per_epoch', type=int, default=1)
-    parser.add_argument('--val_metric', type=str, default='val_loss')
+    parser.add_argument('--val_metric', type=str, default='val_acc')
     parser.add_argument('--save_path', type=str, default='output/')
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--num_train_example', type=int, default=None)
     parser.add_argument('--label_smoothing', type=float, default=0.0)
     # Inference
+    parser.add_argument('--test_batch_size', type=int, default=64)
     parser.add_argument('--num_beams', type=int, default=1)
 
     args = parser.parse_args([]) if notebook else parser.parse_args()
@@ -85,21 +97,10 @@ class ReactionConditionRecommender(LightningModule):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-            encoder_pretrained_model_name_or_path=args.encoder,
-            decoder_pretrained_model_name_or_path=args.decoder,
-        )
+        self.enc_tokenizer, self.dec_tokenizer = get_tokenizers(args)
+        self.model = get_model(args, self.enc_tokenizer)
         if args.mlm:
-            if args.mlm_layer == 'linear':
-                self.mlm_head = nn.Linear(self.model.encoder.config.hidden_size, self.model.encoder.config.vocab_size)
-            elif args.mlm_layer == 'mlp':
-                self.mlm_head = BertLMPredictionHead(self.model.encoder.config)
-            else:
-                raise NotImplementedError
-        utils.expand_max_length(self.model.encoder, args.max_length)
-        self.model.decoder.init_weights()
-        self.enc_tokenizer = AutoTokenizer.from_pretrained(args.encoder, use_fast=False)
-        self.dec_tokenizer = ReactionConditionTokenizer(os.path.join(args.data_path, args.vocab_file))
+            self.mlm_head = get_mlm_head(args, self.model)
         self.validation_outputs = {}
         self.test_outputs = {}
 
@@ -116,7 +117,7 @@ class ReactionConditionRecommender(LightningModule):
         # This accuracy is equivalent to greedy search accuracy
         preds = logits.argmax(dim=-1)[:, :-1]
         labels = batch['decoder_input_ids'][:, 1:]
-        acc = preds.eq(labels).all(dim=-1)
+        acc = torch.logical_or(preds.eq(labels), labels.eq(self.dec_tokenizer.pad_token_id)).all(dim=-1)
         if reduction == 'mean':
             acc = acc.mean()
         return acc
@@ -163,10 +164,16 @@ class ReactionConditionRecommender(LightningModule):
         indices, batch_in, batch_out = batch
         num_beams = self.args.num_beams
         output = self.model.generate(
-            **batch_in, num_beams=num_beams, num_return_sequences=num_beams, max_length=6, length_penalty=0,
-            bos_token_id=self.dec_tokenizer.bos_token_id, return_dict_in_generate=True, output_scores=True)
+            **batch_in, num_beams=num_beams, num_return_sequences=num_beams,
+            max_length=self.args.max_dec_length, length_penalty=0,
+            bos_token_id=self.dec_tokenizer.bos_token_id, eos_token_id=self.dec_tokenizer.eos_token_id,
+            pad_token_id=self.dec_tokenizer.pad_token_id,
+            return_dict_in_generate=True, output_scores=True)
         predictions = self.dec_tokenizer.batch_decode(output.sequences, skip_special_tokens=True)
-        scores = output.sequences_scores.tolist()
+        if 'sequences_scores' in predictions:
+            scores = output.sequences_scores.tolist()
+        else:
+            scores = [0] * len(predictions)
         for i, idx in enumerate(indices):
             self.test_outputs[idx] = {
                 'prediction': predictions[i * num_beams: (i + 1) * num_beams],
@@ -181,7 +188,12 @@ class ReactionConditionRecommender(LightningModule):
             with open(os.path.join(self.args.save_path, f'prediction_{self.test_dataset.name}.json'), 'w') as f:
                 json.dump(test_outputs, f)
             # Evaluate
-            accuracy = evaluate_reaction_condition(test_outputs, self.test_dataset.data_df)
+            if self.args.task == 'condition':
+                accuracy = evaluate_reaction_condition(test_outputs, self.test_dataset.data_df)
+            elif self.args.task == 'retro':
+                accuracy = evaluate_retrosynthesis(test_outputs, self.test_dataset.data_df)
+            else:
+                accuracy = []
             self.print(self.args.save_path)
             self.print(json.dumps(accuracy))
         self.test_outputs.clear()
@@ -194,7 +206,7 @@ class ReactionConditionRecommender(LightningModule):
             for outputs in gathered:
                 gathered_outputs.update(outputs)
         else:
-            gathered_outputs = self.validation_outputs
+            gathered_outputs = outputs
         return gathered_outputs
 
     def configure_optimizers(self):
@@ -208,6 +220,11 @@ class ReactionConditionRecommender(LightningModule):
 
 class ReactionConditionDataModule(LightningDataModule):
 
+    DATASET_CLS = {
+        'condition': ReactionConditionDataset,
+        'retro': RetrosynthesisDataset,
+    }
+
     def __init__(self, args, model):
         super().__init__()
         self.args = args
@@ -217,28 +234,31 @@ class ReactionConditionDataModule(LightningDataModule):
 
     def prepare_data(self):
         args = self.args
+        dataset_cls = self.DATASET_CLS[args.task]
         if args.do_train:
             data_file = os.path.join(args.data_path, args.train_file)
-            self.train_dataset = ReactionConditionDataset(
+            self.train_dataset = dataset_cls(
                 args, data_file, self.enc_tokenizer, self.dec_tokenizer, split='train')
-            # print(f'Train dataset: {len(self.train_dataset)}')
+            print(f'Train dataset: {len(self.train_dataset)}')
         if args.do_train or args.do_valid:
             data_file = os.path.join(args.data_path, args.valid_file)
-            self.val_dataset = ReactionConditionDataset(
+            self.val_dataset = dataset_cls(
                 args, data_file, self.enc_tokenizer, self.dec_tokenizer, split='valid')
-            # print(f'Valid dataset: {len(self.val_dataset)}')
+            print(f'Valid dataset: {len(self.val_dataset)}')
         if args.do_test:
             data_file = os.path.join(args.data_path, args.test_file)
-            self.test_dataset = ReactionConditionDataset(
+            self.test_dataset = dataset_cls(
                 args, data_file, self.enc_tokenizer, self.dec_tokenizer, split='test')
-            # print(f'Test dataset: {len(self.test_dataset)}')
+            print(f'Test dataset: {len(self.test_dataset)}')
         if args.corpus_file:
             if args.train_label_corpus:
+                assert args.task == 'condition'
                 corpus = generate_train_label_corpus(os.path.join(args.data_path, args.train_file))
             else:
-                corpus = read_corpus(os.path.join(args.data_path, args.corpus_file), args.cache_path)
+                corpus = read_corpus(args.corpus_file, args.cache_path)
             if self.train_dataset is not None:
                 self.train_dataset.load_corpus(corpus, os.path.join(args.nn_path, args.train_nn_file))
+                self.train_dataset.print_example()
             if self.val_dataset is not None:
                 self.val_dataset.load_corpus(corpus, os.path.join(args.nn_path, args.valid_nn_file))
             if self.test_dataset is not None:
@@ -256,7 +276,7 @@ class ReactionConditionDataModule(LightningDataModule):
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers,
+            self.test_dataset, batch_size=self.args.test_batch_size, num_workers=self.args.num_workers,
             collate_fn=self.test_dataset.collator)
 
 
@@ -274,8 +294,11 @@ def main():
         save_last=True, dirpath=args.save_path, auto_insert_metric_name=False)
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='step')
     if args.do_train and not args.debug:
+        project_name = 'TextReact'
+        if args.task == 'retro':
+            project_name += '_retro'
         logger = pl.loggers.WandbLogger(
-            project="TextReact", save_dir=args.save_path, name=os.path.basename(args.save_path))
+            project=project_name, save_dir=args.save_path, name=os.path.basename(args.save_path))
     else:
         logger = None
 
@@ -302,7 +325,7 @@ def main():
             utils.clear_path(args.save_path, trainer)
             ckpt_path = None
         else:
-            ckpt_path = os.path.join(args.save_path, 'last.ckpt')
+            ckpt_path = os.path.join(args.save_path, 'best.ckpt')
             ckpt_path = ckpt_path if checkpoint.file_exists(ckpt_path, trainer) else None
         # Train
         trainer.fit(model, datamodule=dm, ckpt_path=ckpt_path)
@@ -314,17 +337,12 @@ def main():
         print('Load model checkpoint:', best_model_path)
         model = ReactionConditionRecommender.load_from_checkpoint(best_model_path, strict=False, args=args)
 
+    if args.do_valid:
+        trainer.validate(model, datamodule=dm)
+
     if args.do_test:
         model.test_dataset = dm.test_dataset
         trainer.test(model, datamodule=dm)
-
-    # loader = dm.val_dataloader()
-    # for batch_idx, batch in enumerate(loader):
-    #     print(batch)
-    #     output = model.validation_step(batch, batch_idx)
-    #     print(output.logits.shape)
-    #     print(output.logits.argmax(dim=-1))
-    #     break
 
 
 if __name__ == "__main__":

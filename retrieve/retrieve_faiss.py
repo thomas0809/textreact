@@ -1,5 +1,5 @@
-import os.path
-
+import os
+import argparse
 import pandas as pd
 import numpy as np
 import json
@@ -57,38 +57,44 @@ def index_and_search(train_fps, query_fps):
 
 if __name__ == '__main__':
 
-    base = '../data/USPTO_condition_MIT/'
-    train_df = pd.read_csv(base + 'USPTO_condition_train.csv', keep_default_na=False)
-    val_df = pd.read_csv(base + 'USPTO_condition_val.csv', keep_default_na=False)
-    test_df = pd.read_csv(base + 'USPTO_condition_test.csv', keep_default_na=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default=None, required=True)
+    parser.add_argument('--output_path', type=str, default=None, required=True)
+    args = parser.parse_args()
 
-    if not os.path.exists('train_fp.pkl'):
+    train_df = pd.read_csv(os.path.join(args.data_path, 'USPTO_condition_train.csv'), keep_default_na=False)
+    val_df = pd.read_csv(os.path.join(args.data_path, 'USPTO_condition_val.csv'), keep_default_na=False)
+    test_df = pd.read_csv(os.path.join(args.data_path, 'USPTO_condition_test.csv'), keep_default_na=False)
+
+    train_fp_file = os.path.join(args.output_path, 'train_fp.pkl')
+    if not os.path.exists(train_fp_file):
         train_fps = compute_reaction_fingerprints(train_df['canonical_rxn'])
-        with open('train_fp.pkl', 'wb') as f:
+        os.makedirs(args.output_path, exist_ok=True)
+        with open(train_fp_file, 'wb') as f:
             np.save(f, train_fps)
     else:
-        with open('train_fp.pkl', 'rb') as f:
+        with open(train_fp_file, 'rb') as f:
             train_fps = np.load(f)
 
     train_id = train_df['id']
 
-    # query_fps, query_id = train_fps, train_df['id']
-    # rank = index_and_search(train_fps, query_fps)
-    # result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
-    # with open('train_nn_rxnfp_l2.json', 'w') as f:
-    #     json.dump(result, f)
+    query_fps, query_id = train_fps, train_df['id']
+    rank = index_and_search(train_fps, query_fps)
+    result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
+    with open(os.path.join(args.output_path, 'train.json'), 'w') as f:
+        json.dump(result, f)
 
-    # query_fps, query_id = compute_reaction_fingerprints(val_df['canonical_rxn']), val_df['id']
-    # rank = index_and_search(train_fps, query_fps)
-    # result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
-    # with open('val_nn_rxnfp_l2.json', 'w') as f:
-    #     json.dump(result, f)
+    query_fps, query_id = compute_reaction_fingerprints(val_df['canonical_rxn']), val_df['id']
+    rank = index_and_search(train_fps, query_fps)
+    result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
+    with open(os.path.join(args.output_path, 'val.json'), 'w') as f:
+        json.dump(result, f)
 
     query_fps, query_id = compute_reaction_fingerprints(test_df['canonical_rxn']), test_df['id']
     rank = index_and_search(train_fps, query_fps)
-    # result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
-    # with open('test_nn_rxnfp_l2.json', 'w') as f:
-    #     json.dump(result, f)
+    result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
+    with open(os.path.join(args.output_path, 'test.json'), 'w') as f:
+        json.dump(result, f)
 
     cnt = {x: 0 for x in [1, 3, 5, 10, 15]}
     for i, nn in enumerate(rank):

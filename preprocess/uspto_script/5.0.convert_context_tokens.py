@@ -56,7 +56,7 @@ if __name__ == '__main__':
     condition_cols = ['catalyst1', 'solvent1', 'solvent2', 'reagent1', 'reagent2']
 
     vocab = get_condition_vocab(database[condition_cols])
-    vocab_path = os.path.join(final_condition_data_path, 'vocab.txt')
+    vocab_path = os.path.join(final_condition_data_path, 'vocab_smiles.txt')
     with open(vocab_path, 'w') as f:
         f.write('\n'.join(vocab))
 

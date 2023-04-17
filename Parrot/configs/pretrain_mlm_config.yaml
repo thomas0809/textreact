@@ -26,7 +26,7 @@ output_dir: ./out/mlm_uspto_pretrain
 best_model_dir: ./outputs/best_mlm_uspto_pretrain
 overwrite_output_dir: true
 train_batch_size: 32
-vocab_path: ./dataset/pretrain_data/vocab.txt
+vocab_path: ./dataset/pretrain_data/vocab_smiles.txt
 wandb_project: uspto_mlm_remapped
 train_file: ./dataset/pretrain_data/mlm_rxn_train.txt
 eval_file: ./dataset/pretrain_data/mlm_rxn_val.txt
