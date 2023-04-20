@@ -1,9 +1,10 @@
 import os
 import math
 import json
-import yaml
+import copy
 import random
 import argparse
+import collections
 import numpy as np
 
 import torch
@@ -14,7 +15,6 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningModule, LightningDataModule
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from transformers import get_scheduler, EncoderDecoderModel, EncoderDecoderConfig, AutoTokenizer, AutoConfig, AutoModel
-from transformers.models.bert.modeling_bert import BertLMPredictionHead
 
 from textreact.tokenizer import get_tokenizers
 from textreact.model import get_model, get_mlm_head
@@ -60,13 +60,14 @@ def get_args(notebook=False):
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--shuffle_smiles', action='store_true')
     parser.add_argument('--num_neighbors', type=int, default=-1)
-    parser.add_argument('--skip_gold_neighbor', action='store_true')
     parser.add_argument('--use_gold_neighbor', action='store_true')
     parser.add_argument('--max_num_neighbors', type=int, default=10)
     parser.add_argument('--random_neighbor_ratio', type=float, default=0.8)
+    parser.add_argument('--deduplicate_neighbors', action='store_true')
     parser.add_argument('--mlm', action='store_true')
     parser.add_argument('--mlm_ratio', type=float, default=0.15)
     parser.add_argument('--mlm_layer', type=str, default='linear')
+    parser.add_argument('--mlm_lambda', type=float, default=1)
     # Training
     parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--batch_size', type=int, default=256)
@@ -76,7 +77,7 @@ def get_args(notebook=False):
     parser.add_argument('--scheduler', type=str, choices=['cosine', 'constant'], default='cosine')
     parser.add_argument('--warmup_ratio', type=float, default=0)
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1)
-    parser.add_argument('--load_path', type=str, default=None)
+    parser.add_argument('--load_ckpt', type=str, default='best.ckpt')
     parser.add_argument('--eval_per_epoch', type=int, default=1)
     parser.add_argument('--val_metric', type=str, default='val_acc')
     parser.add_argument('--save_path', type=str, default='output/')
@@ -86,6 +87,8 @@ def get_args(notebook=False):
     # Inference
     parser.add_argument('--test_batch_size', type=int, default=64)
     parser.add_argument('--num_beams', type=int, default=1)
+    parser.add_argument('--test_each_neighbor', action='store_true')
+    parser.add_argument('--test_num_neighbors', type=int, default=1)
 
     args = parser.parse_args([]) if notebook else parser.parse_args()
 
@@ -101,8 +104,8 @@ class ReactionConditionRecommender(LightningModule):
         self.model = get_model(args, self.enc_tokenizer)
         if args.mlm:
             self.mlm_head = get_mlm_head(args, self.model)
-        self.validation_outputs = {}
-        self.test_outputs = {}
+        self.validation_outputs = collections.defaultdict(dict)
+        self.test_outputs = collections.defaultdict(dict)
 
     def compute_loss(self, logits, batch, reduction='mean'):
         batch_size, max_len, vocab_size = logits.size()
@@ -136,12 +139,12 @@ class ReactionConditionRecommender(LightningModule):
         total_loss = loss
         if self.args.mlm:
             mlm_loss = self.compute_mlm_loss(output.encoder_last_hidden_state, batch_out['mlm_labels'])
-            total_loss += mlm_loss
+            total_loss += mlm_loss * self.args.mlm_lambda
             self.log('mlm_loss', mlm_loss)
             self.log('total_loss', total_loss)
         return total_loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
         indices, batch_in, batch_out = batch
         output = self.model(**batch_in)
         if self.args.val_metric == 'val_loss':
@@ -151,16 +154,18 @@ class ReactionConditionRecommender(LightningModule):
         else:
             raise ValueError
         for idx, score in zip(indices, scores):
-            self.validation_outputs[idx] = score
+            self.validation_outputs[dataloader_idx][idx] = score
         return output
 
     def on_validation_epoch_end(self):
-        validation_outputs = self.gather_outputs(self.validation_outputs)
-        val_score = np.mean([v for v in validation_outputs.values()])
-        self.log(self.args.val_metric, val_score, prog_bar=True, rank_zero_only=True)
+        for dataloader_idx in self.validation_outputs:
+            validation_outputs = self.gather_outputs(self.validation_outputs[dataloader_idx])
+            val_score = np.mean([v for v in validation_outputs.values()])
+            metric_name = self.args.val_metric if dataloader_idx == 0 else f'{self.args.val_metric}/{dataloader_idx}'
+            self.log(metric_name, val_score, prog_bar=True, rank_zero_only=True)
         self.validation_outputs.clear()
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
         indices, batch_in, batch_out = batch
         num_beams = self.args.num_beams
         output = self.model.generate(
@@ -175,27 +180,31 @@ class ReactionConditionRecommender(LightningModule):
         else:
             scores = [0] * len(predictions)
         for i, idx in enumerate(indices):
-            self.test_outputs[idx] = {
+            self.test_outputs[dataloader_idx][idx] = {
                 'prediction': predictions[i * num_beams: (i + 1) * num_beams],
                 'score': scores[i * num_beams: (i + 1) * num_beams]
             }
         return
 
     def on_test_epoch_end(self):
-        test_outputs = self.gather_outputs(self.test_outputs)
-        if self.trainer.is_global_zero:
-            # Save prediction
-            with open(os.path.join(self.args.save_path, f'prediction_{self.test_dataset.name}.json'), 'w') as f:
-                json.dump(test_outputs, f)
-            # Evaluate
-            if self.args.task == 'condition':
-                accuracy = evaluate_reaction_condition(test_outputs, self.test_dataset.data_df)
-            elif self.args.task == 'retro':
-                accuracy = evaluate_retrosynthesis(test_outputs, self.test_dataset.data_df)
-            else:
-                accuracy = []
-            self.print(self.args.save_path)
-            self.print(json.dumps(accuracy))
+        for dataloader_idx in self.test_outputs:
+            test_outputs = self.gather_outputs(self.test_outputs[dataloader_idx])
+            if self.args.test_each_neighbor:
+                test_outputs = utils.gather_prediction_each_neighbor(test_outputs, self.args.test_num_neighbors)
+            if self.trainer.is_global_zero:
+                # Save prediction
+                with open(os.path.join(self.args.save_path,
+                                       f'prediction_{self.test_dataset.name}_{dataloader_idx}.json'), 'w') as f:
+                    json.dump(test_outputs, f)
+                # Evaluate
+                if self.args.task == 'condition':
+                    accuracy = evaluate_reaction_condition(test_outputs, self.test_dataset.data_df)
+                elif self.args.task == 'retro':
+                    accuracy = evaluate_retrosynthesis(test_outputs, self.test_dataset.data_df)
+                else:
+                    accuracy = []
+                self.print(self.args.save_path)
+                self.print(json.dumps(accuracy))
         self.test_outputs.clear()
 
     def gather_outputs(self, outputs):
@@ -269,15 +278,21 @@ class ReactionConditionDataModule(LightningDataModule):
             self.train_dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers,
             collate_fn=self.train_dataset.collator)
 
+    def get_eval_dataloaders(self, dataset):
+        args = self.args
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=args.batch_size, num_workers=args.num_workers, collate_fn=dataset.collator)
+        dataset_skip_gold = copy.copy(dataset)
+        dataset_skip_gold.skip_gold_neighbor = True
+        dataloader_skip_gold = torch.utils.data.DataLoader(
+            dataset_skip_gold, batch_size=args.batch_size, num_workers=args.num_workers, collate_fn=dataset.collator)
+        return [dataloader, dataloader_skip_gold]
+
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.val_dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers,
-            collate_fn=self.val_dataset.collator)
+        return self.get_eval_dataloaders(self.val_dataset)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.args.test_batch_size, num_workers=self.args.num_workers,
-            collate_fn=self.test_dataset.collator)
+        return self.get_eval_dataloaders(self.test_dataset)
 
 
 def main():
@@ -325,13 +340,13 @@ def main():
             utils.clear_path(args.save_path, trainer)
             ckpt_path = None
         else:
-            ckpt_path = os.path.join(args.save_path, 'best.ckpt')
+            ckpt_path = os.path.join(args.save_path, args.load_ckpt)
             ckpt_path = ckpt_path if checkpoint.file_exists(ckpt_path, trainer) else None
         # Train
         trainer.fit(model, datamodule=dm, ckpt_path=ckpt_path)
         best_model_path = checkpoint.best_model_path
     else:
-        best_model_path = os.path.join(args.save_path, 'best.ckpt')
+        best_model_path = os.path.join(args.save_path, args.load_ckpt)
 
     if args.do_valid or args.do_test:
         print('Load model checkpoint:', best_model_path)

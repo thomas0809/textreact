@@ -55,3 +55,15 @@ def clear_path(path, trainer):
             filepath = os.path.join(path, file)
             logging.info(f' Remove checkpoint {filepath}')
             trainer.strategy.remove_checkpoint(filepath)
+
+
+def gather_prediction_each_neighbor(prediction, num_neighbors):
+    results = {}
+    for i, pred in sorted(prediction.items()):
+        idx = i // num_neighbors
+        if i % num_neighbors == 0:
+            results[idx] = pred
+        else:
+            for key in results[idx]:
+                results[idx][key] += pred[key]
+    return results

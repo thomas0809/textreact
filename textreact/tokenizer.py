@@ -230,22 +230,38 @@ class BasicSmilesTokenizer(object):
 
 class SmilesTextTokenizer(PreTrainedTokenizer):
 
-    def __init__(self, smiles_tokenizer, text_tokenizer):
+    def __init__(self, text_tokenizer, smiles_tokenizer=None):
         super().__init__(
             pad_token=text_tokenizer.pad_token,
             mask_token=text_tokenizer.mask_token)
-        self.smiles_tokenizer = smiles_tokenizer
+        if smiles_tokenizer is None:
+            self.separate = False
+            self.smiles_tokenizer = text_tokenizer
+        else:
+            self.separate = True
+            self.smiles_tokenizer = smiles_tokenizer
         self.text_tokenizer = text_tokenizer
 
+    @property
+    def smiles_offset(self):
+        return len(self.text_tokenizer) if self.separate is not None else 0
+
     def __len__(self):
-        return len(self.smiles_tokenizer) + len(self.text_tokenizer)
+        return len(self.text_tokenizer) + self.smiles_offset
 
     def __call__(self, text, text_pair, **kwargs):
         result = self.smiles_tokenizer(text, **kwargs)
-        result['input_ids'] = [v + len(self.text_tokenizer) for v in result['input_ids']]
-        result_pair = self.text_tokenizer(text_pair, add_special_tokens=False, **kwargs)
-        for key in result:
-            result[key] = result[key] + result_pair[key]
+        if self.separate:
+            result['input_ids'] = [v + self.smiles_offset for v in result['input_ids']]
+        if isinstance(text_pair, str):
+            result_pair = self.text_tokenizer(text_pair, **kwargs)
+            for key in result:
+                result[key] = result[key] + result_pair[key][1:]  # skip the CLS token
+        elif isinstance(text_pair, list):
+            for t in text_pair:
+                result_pair = self.text_tokenizer(t, **kwargs)
+                for key in result:
+                    result[key] = result[key] + result_pair[key][1:]  # skip the CLS token
         return result
 
     def _convert_id_to_token(self, index):
@@ -263,11 +279,12 @@ def get_tokenizers(args):
     if args.encoder_tokenizer == 'smiles':
         enc_tokenizer = SmilesTokenizer(args.vocab_file)
     elif args.encoder_tokenizer == 'text':
-        enc_tokenizer = AutoTokenizer.from_pretrained(args.encoder, use_fast=False)
+        text_tokenizer = AutoTokenizer.from_pretrained(args.encoder, use_fast=False)
+        enc_tokenizer = SmilesTextTokenizer(text_tokenizer)
     elif args.encoder_tokenizer == 'smiles_text':
         smiles_tokenizer = SmilesTokenizer(args.vocab_file)
         text_tokenizer = AutoTokenizer.from_pretrained(args.encoder, use_fast=False)
-        enc_tokenizer = SmilesTextTokenizer(smiles_tokenizer, text_tokenizer)
+        enc_tokenizer = SmilesTextTokenizer(text_tokenizer, smiles_tokenizer)
     else:
         raise ValueError
     # Decoder

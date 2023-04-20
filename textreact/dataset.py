@@ -25,6 +25,7 @@ class BaseDataset(Dataset):
         self.indices = self.data_df[args.id_field].tolist()
         self.corpus = None
         self.neighbors = None
+        self.skip_gold_neighbor = False
         self.name = split
         self.split = split
         self.collator = DataCollator(args, enc_tokenizer, dec_tokenizer, return_label=(split != 'test'))
@@ -38,7 +39,19 @@ class BaseDataset(Dataset):
             nn_data = json.load(f)
             self.neighbors = {ex['id']: ex['nn'] for ex in nn_data}
 
-    def get_neighbor_text(self, idx):
+    def deduplicate_neighbors(self, neighbors_ids):
+        output = []
+        for i in neighbors_ids:
+            flag = False
+            for j in output:
+                if self.corpus[i] == self.corpus[j]:
+                    flag = True
+                    break
+            if not flag:
+                output.append(i)
+        return output
+
+    def get_neighbor_text(self, idx, return_list=False):
         rxn_id = self.indices[idx]
         neighbors_ids = self.neighbors[rxn_id]
         if self.split == 'train':
@@ -47,19 +60,20 @@ class BaseDataset(Dataset):
                     neighbors_ids.remove(rxn_id)
                 if rxn_id in self.corpus:
                     neighbors_ids = [rxn_id] + neighbors_ids
-            neighbors_texts = [self.corpus[idx] for idx in neighbors_ids[:self.args.max_num_neighbors]]
+            neighbors_ids = self.deduplicate_neighbors(neighbors_ids)
+            neighbors_texts = [self.corpus[i] for i in neighbors_ids[:self.args.max_num_neighbors]]
             if random.random() < self.args.random_neighbor_ratio:
                 selected_texts = random.sample(neighbors_texts, k=self.args.num_neighbors)
             else:
                 selected_texts = neighbors_texts[:self.args.num_neighbors]
         else:
-            if self.args.skip_gold_neighbor and rxn_id in neighbors_ids:
-                neighbors_ids.remove(rxn_id)
-            selected_texts = [self.corpus[idx] for idx in neighbors_ids[:self.args.num_neighbors]]
-        nn_text = ''
-        for i, text in enumerate(selected_texts):
-            nn_text += f' ({i}) ' + text
-        return nn_text
+            if self.skip_gold_neighbor and rxn_id in self.corpus:
+                gold_text = self.corpus[rxn_id]
+                neighbors_ids = [i for i in neighbors_ids if self.corpus[i] != gold_text]
+            neighbors_ids = self.deduplicate_neighbors(neighbors_ids)
+            selected_texts = [self.corpus[i] for i in neighbors_ids[:self.args.num_neighbors]]
+        return selected_texts if return_list \
+            else ''.join([f' ({i}) {text}' for i, text in enumerate(selected_texts)])
 
     def apply_mlm(self, enc_input, output):
         origin_ids = copy.deepcopy(enc_input['input_ids'])
@@ -153,8 +167,26 @@ class ReactionConditionDataset(BaseDataset):
 
 class RetrosynthesisDataset(BaseDataset):
 
+    def __len__(self):
+        if self.split == 'test' and self.args.test_each_neighbor:
+            return len(self.data_df) * self.args.test_num_neighbors
+        return len(self.data_df)
+
+    def get_neighbor_text(self, idx, return_list=False):
+        if self.split == 'test' and self.args.test_each_neighbor:
+            rxn_id = self.indices[idx // self.args.test_num_neighbors]
+            neighbors_ids = self.neighbors[rxn_id]
+            nn_id = idx % self.args.test_num_neighbors
+            selected_texts = [self.corpus[i] for i in neighbors_ids[nn_id:nn_id + self.args.num_neighbors]]
+            return selected_texts if return_list \
+                else ''.join([f' ({i}) {text}' for i, text in enumerate(selected_texts)])
+        return super().get_neighbor_text(idx, return_list)
+
     def prepare_encoder_input(self, idx):
-        row = self.data_df.iloc[idx]
+        if self.split == 'test' and self.args.test_each_neighbor:
+            row = self.data_df.iloc[idx // self.args.test_num_neighbors]
+        else:
+            row = self.data_df.iloc[idx]
         product_smiles = row['product_smiles']
         # Data augmentation
         if self.split == 'train' and self.args.shuffle_smiles:
@@ -165,9 +197,9 @@ class RetrosynthesisDataset(BaseDataset):
         return enc_input
 
     def prepare_decoder_input(self, idx):
-        row = self.data_df.iloc[idx]
         dec_input = {}
         if self.split != 'test':
+            row = self.data_df.iloc[idx]
             dec_input = self.dec_tokenizer(
                 row['reactant_smiles'], truncation=False,  return_token_type_ids=False, verbose=False)
         return dec_input
