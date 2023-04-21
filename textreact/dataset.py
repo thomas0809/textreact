@@ -63,7 +63,7 @@ class BaseDataset(Dataset):
             neighbors_ids = self.deduplicate_neighbors(neighbors_ids)
             neighbors_texts = [self.corpus[i] for i in neighbors_ids[:self.args.max_num_neighbors]]
             if random.random() < self.args.random_neighbor_ratio:
-                selected_texts = random.sample(neighbors_texts, k=self.args.num_neighbors)
+                selected_texts = random.sample(neighbors_texts, k=min(self.args.num_neighbors, len(neighbors_texts)))
             else:
                 selected_texts = neighbors_texts[:self.args.num_neighbors]
         else:

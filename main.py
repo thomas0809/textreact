@@ -63,7 +63,6 @@ def get_args(notebook=False):
     parser.add_argument('--use_gold_neighbor', action='store_true')
     parser.add_argument('--max_num_neighbors', type=int, default=10)
     parser.add_argument('--random_neighbor_ratio', type=float, default=0.8)
-    parser.add_argument('--deduplicate_neighbors', action='store_true')
     parser.add_argument('--mlm', action='store_true')
     parser.add_argument('--mlm_ratio', type=float, default=0.15)
     parser.add_argument('--mlm_layer', type=str, default='linear')
