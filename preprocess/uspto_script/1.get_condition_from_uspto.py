@@ -44,6 +44,22 @@ def read_xml2dict(xml_fpath):
 
 
     for rxn_data in reaction_data_list:
+
+        try:
+            patent_id = rxn_data['dl:source']['dl:documentId']
+            heading_text = rxn_data['dl:source'].get('dl:headingText', '')
+            paragraph_text = rxn_data['dl:source'].get('dl:paragraphText', '')
+            year = os.path.dirname(xml_fpath).split('/')[-1]
+            patent_type = 'grant' if 'grants' in xml_fpath else 'application'
+            patent_info[patent_id] = {
+                'year': int(year),
+                'type': patent_type
+            }
+        except:
+            print(xml_fpath)
+            print(rxn_data)
+            continue
+
         if type(rxn_data) is str:
             continue
         if rxn_data['spectatorList'] is None:
@@ -54,16 +70,6 @@ def read_xml2dict(xml_fpath):
             spectator_obj = rxn_data['spectatorList']['spectator']
         except:
             continue
-
-        patent_id = rxn_data['dl:source']['dl:documentId']
-        heading_text = rxn_data['dl:source'].get('dl:headingText', '')
-        paragraph_text = rxn_data['dl:source'].get('dl:paragraphText', '')
-        year = os.path.dirname(xml_fpath).split('/')[-1]
-        patent_type = 'grant' if 'grants' in xml_fpath else 'application'
-        patent_info[patent_id] = {
-            'year': int(year),
-            'type': patent_type
-        }
 
         s_list = []
         c_list = []
@@ -145,24 +151,24 @@ if __name__ == '__main__':
             if fname.endswith('.xml'):
                 xml_path_list.append(os.path.join(root, fname))
     xml_path_list = sorted(xml_path_list)
-    fout, writer = get_writer('uspto_rxn_condition.csv', CONDITION_DICT.keys())
-    corpus_fout, corpus_writer = get_writer('uspto_rxn_corpus.csv', CORPUS_DICT.keys())
+    # fout, writer = get_writer('uspto_rxn_condition.csv', CONDITION_DICT.keys())
+    # corpus_fout, corpus_writer = get_writer('uspto_rxn_corpus.csv', CORPUS_DICT.keys())
     cnt = 0
     for i, path in tqdm(enumerate(xml_path_list), total=len(xml_path_list)):
         reaction_and_condition_dict, corpus_dict = read_xml2dict(path)
         reaction_and_condition_df = pd.DataFrame(reaction_and_condition_dict)
-        for row in reaction_and_condition_df.itertuples():
-            writer.writerow(list(row)[1:])
-            fout.flush()
+        # for row in reaction_and_condition_df.itertuples():
+        #     writer.writerow(list(row)[1:])
+        #     fout.flush()
         corpus_df = pd.DataFrame(corpus_dict)
-        for row in corpus_df.itertuples():
-            corpus_writer.writerow(list(row)[1:])
-            corpus_fout.flush()
+        # for row in corpus_df.itertuples():
+        #     corpus_writer.writerow(list(row)[1:])
+        #     corpus_fout.flush()
         cnt += len(reaction_and_condition_df)
         if i % 100 == 0:
             print(f'step {i}: {cnt} data')
-    fout.close()
-    corpus_fout.close()
+    # fout.close()
+    # corpus_fout.close()
 
     for patent_id in patent_cnt:
         patent_info[patent_id]['num_rxn'] = patent_cnt[patent_id]

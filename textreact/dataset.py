@@ -22,7 +22,7 @@ class BaseDataset(Dataset):
         self.enc_tokenizer = enc_tokenizer
         self.dec_tokenizer = dec_tokenizer
         self.data_df = pd.read_csv(data_file, keep_default_na=False)
-        self.indices = self.data_df[args.id_field].tolist()
+        self.indices = self.data_df['id'].tolist()
         self.corpus = None
         self.neighbors = None
         self.skip_gold_neighbor = False
@@ -53,7 +53,7 @@ class BaseDataset(Dataset):
 
     def get_neighbor_text(self, idx, return_list=False):
         rxn_id = self.indices[idx]
-        neighbors_ids = self.neighbors[rxn_id]
+        neighbors_ids = [i for i in self.neighbors[rxn_id] if i in self.corpus]
         if self.split == 'train':
             if self.args.use_gold_neighbor:
                 if rxn_id in neighbors_ids:

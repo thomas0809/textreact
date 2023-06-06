@@ -17,7 +17,7 @@ import numpy as np
 
 BASE = '/scratch/yujieq/uspto_grant_red/'
 BASE_TXT = '/scratch/yujieq/uspto_grant_fulltext/'
-BASE_MOL = '/scratch/yujieq/uspto_mol/'
+BASE_TXT_ZIP = '/scratch/yujieq/uspto_grant_fulltext_zip/'
 
 
 # Download data
@@ -48,7 +48,7 @@ def download():
 
 
 def download_fulltext():
-    for year in range(1976, 2002):
+    for year in range(2002, 2017):
         url = f'https://bulkdata.uspto.gov/data/patent/grant/redbook/fulltext/{year}/'
         f = urllib.request.urlopen(url)
         content = f.read().decode('utf-8')
@@ -74,26 +74,14 @@ def is_zip(file):
 
 
 def unzip():
-    for year in range(2009, 2010):
-        path = os.path.join(BASE, str(year))
+    for year in range(1976, 2017):
+        path = os.path.join(BASE_TXT_ZIP, str(year))
+        outpath = os.path.join(BASE_TXT, str(year))
         for datefile in sorted(os.listdir(path)):
             if is_zip(datefile):
-                if datefile < 'I20080930':
-                    continue
+                print(os.path.join(path, datefile))
                 with zipfile.ZipFile(os.path.join(path, datefile), 'r') as zipobj:
-                    zipobj.extractall(path)
-                date = datefile[:-4]
-                molpath = os.path.join(BASE_MOL, str(year), date)
-                cnt = 0
-                total = 0
-                for file in glob.glob(f"{path}/project/pdds/ICEwithdraw/{date}/**/US*.ZIP"):
-                    total += 1
-                    with zipfile.ZipFile(file, 'r') as zipobj:
-                        filelist = zipobj.namelist()
-                        if any([name[-4:] in ['.mol', '.MOL'] for name in filelist]):
-                            zipobj.extractall(molpath)
-                            cnt += 1
-                print(datefile, f"{cnt} / {total} have molecules")
+                    zipobj.extractall(outpath)
 
 
 if __name__ == "__main__":

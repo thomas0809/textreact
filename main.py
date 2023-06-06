@@ -50,7 +50,6 @@ def get_args(notebook=False):
     parser.add_argument('--corpus_file', type=str, default=None)
     parser.add_argument('--train_label_corpus', action='store_true')
     parser.add_argument('--cache_path', type=str, default=None)
-    parser.add_argument('--id_field', type=str, default='id')
     parser.add_argument('--nn_path', type=str, default=None)
     parser.add_argument('--train_nn_file', type=str, default=None)
     parser.add_argument('--valid_nn_file', type=str, default=None)
@@ -202,7 +201,7 @@ class ReactionConditionRecommender(LightningModule):
                     accuracy = evaluate_retrosynthesis(test_outputs, self.test_dataset.data_df)
                 else:
                     accuracy = []
-                self.print(self.args.save_path)
+                self.print(self.ckpt_path)
                 self.print(json.dumps(accuracy))
         self.test_outputs.clear()
 
@@ -281,6 +280,8 @@ class ReactionConditionDataModule(LightningDataModule):
         args = self.args
         dataloader = torch.utils.data.DataLoader(
             dataset, batch_size=args.batch_size, num_workers=args.num_workers, collate_fn=dataset.collator)
+        if args.corpus_file is None:
+            return dataloader
         dataset_skip_gold = copy.copy(dataset)
         dataset_skip_gold.skip_gold_neighbor = True
         dataloader_skip_gold = torch.utils.data.DataLoader(
@@ -350,6 +351,7 @@ def main():
     if args.do_valid or args.do_test:
         print('Load model checkpoint:', best_model_path)
         model = ReactionConditionRecommender.load_from_checkpoint(best_model_path, strict=False, args=args)
+        model.ckpt_path = best_model_path
 
     if args.do_valid:
         trainer.validate(model, datamodule=dm)

@@ -17,17 +17,17 @@ BASE = 'data/USPTO_50K'
 
 
 def canonical_rxn_smiles(rxn_smiles):
+    reactants, reagents, products = rxn_smiles.split(">")
     try:
-        reactants, reagents, products = rxn_smiles.split(">")
         mols_r = Chem.MolFromSmiles(reactants)
         mols_p = Chem.MolFromSmiles(products)
         [a.ClearProp('molAtomMapNumber') for a in mols_r.GetAtoms()]
         [a.ClearProp('molAtomMapNumber') for a in mols_p.GetAtoms()]
         cano_smi_r = Chem.MolToSmiles(mols_r, isomericSmiles=True, canonical=True)
         cano_smi_p = Chem.MolToSmiles(mols_p, isomericSmiles=True, canonical=True)
-        return cano_smi_r + '>>' + cano_smi_p, True
+        return cano_smi_r + '>>' + cano_smi_p, cano_smi_r, cano_smi_p, True
     except:
-        return rxn_smiles, False
+        return rxn_smiles, reactants, products, False
 
 
 def reaction_fingerprint(smiles):
@@ -78,34 +78,45 @@ def reaction_similarity(smiles1=None, smiles2=None, fp1=None, fp2=None):
 #     df.to_csv(os.path.join(BASE, f'processed/{split}.csv'), index=False)
 
 
-# Match id
-
-# corpus_df = pd.read_csv('data/USPTO_rxn_condition.csv')
+# rxn_df = pd.read_csv('data/USPTO_rxn_condition.csv')
 # with multiprocessing.Pool(32) as p:
-#     results = p.map(canonical_rxn_smiles, corpus_df['rxn_smiles'], chunksize=128)
-#     canonical_rxn, success = zip(*results)
+#     results = p.map(canonical_rxn_smiles, rxn_df['rxn_smiles'], chunksize=128)
+#     canonical_rxn, reactants, products, success = zip(*results)
 #
 # print(np.mean(success))
-# corpus_df['canonical_rxn'] = canonical_rxn
-# corpus_df.to_csv('data/USPTO_rxn_condition_canon.csv', index=False)
+# rxn_df['canonical_rxn'] = canonical_rxn
+# rxn_df['reactants'] = reactants
+# rxn_df['products'] = products
+# rxn_df = rxn_df[['id', 'source', 'year', 'patent_type', 'canonical_rxn', 'reactants', 'products']]
+# rxn_df.to_csv('data/USPTO_rxn_smiles.csv', index=False)
+
+
+# Match id
 
 corpus_df = pd.read_csv('preprocess/uspto_script/uspto_rxn_condition_remapped_and_reassign_condition_role.csv')
 rxn_smiles_to_id = {}
 for i, row in tqdm(corpus_df.iterrows()):
-    rxn_smiles_to_id[row['canonical_rxn']] = row['id']
-
-# fulldata_df = pd.read_csv('preprocess/uspto_script/uspto_rxn_condition.csv')
+    canonical_rxn = row['canonical_rxn']
+    if canonical_rxn not in rxn_smiles_to_id:
+        rxn_smiles_to_id[canonical_rxn] = []
+    rxn_smiles_to_id[canonical_rxn].append(row['id'])
 
 for split in ['train', 'valid', 'test']:
     df = pd.read_csv(f'data/USPTO_50K/processed/{split}.csv')
     cnt = 0
+    match_patent_cnt = 0
     nomatch_cnt = 0
     matched_ids = []
     f = open('tmp.txt', 'w')
     for i, row in tqdm(df.iterrows()):
         rxn_smiles = row['reactant_smiles'] + '>>' + row['product_smiles']
         if rxn_smiles in rxn_smiles_to_id:
-            rxn_id = rxn_smiles_to_id[rxn_smiles]
+            rxn_id = rxn_smiles_to_id[rxn_smiles][0]
+            for idx in rxn_smiles_to_id[rxn_smiles]:
+                if idx.startswith(row['id']):
+                    rxn_id = idx
+                    match_patent_cnt += 1
+                    break
             cnt += 1
         else:
             patent_df = corpus_df.loc[corpus_df['source'] == row['id']]
@@ -132,6 +143,8 @@ for split in ['train', 'valid', 'test']:
             f.flush()
         matched_ids.append(rxn_id)
     f.close()
-    df['matched_id'] = matched_ids
-    df.to_csv(f'data/USPTO_50K/matched/{split}.csv', index=False)
-    print(cnt, nomatch_cnt, len(df))
+    df['source'] = df['id']
+    df['id'] = matched_ids
+    os.makedirs('data/USPTO_50K/matched1/', exist_ok=True)
+    df.to_csv(f'data/USPTO_50K/matched1/{split}.csv', index=False)
+    print(cnt, match_patent_cnt, nomatch_cnt, len(df))
