@@ -111,11 +111,11 @@ if __name__ == '__main__':
 
     train_id = train_df['id']
 
-    # query_fps, query_id = train_fps, train_df['id']
-    # rank = index_and_search(train_fps, query_fps)
-    # result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
-    # with open(os.path.join(args.output_path, 'train.json'), 'w') as f:
-    #     json.dump(result, f)
+    query_fps, query_id = train_fps, train_df['id']
+    rank = index_and_search(train_fps, query_fps)
+    result = [{'id': query_id[i], 'nn': [train_id[n] for n in nn]} for i, nn in enumerate(rank)]
+    with open(os.path.join(args.output_path, 'train.json'), 'w') as f:
+        json.dump(result, f)
 
     query_fps, query_id = fingerprint_fn(val_df[args.field]), val_df['id']
     rank = index_and_search(train_fps, query_fps)
