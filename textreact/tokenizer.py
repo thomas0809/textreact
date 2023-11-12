@@ -2,6 +2,7 @@ import collections
 import os
 import re
 from typing import List
+import pandas as pd
 from transformers import PreTrainedTokenizer, AutoTokenizer, BertTokenizer
 
 
@@ -250,6 +251,7 @@ class SmilesTextTokenizer(PreTrainedTokenizer):
         return len(self.text_tokenizer) + self.smiles_offset
 
     def __call__(self, text, text_pair, **kwargs):
+        # TODO check if input actually makes sense
         result = self.smiles_tokenizer(text, **kwargs)
         if self.separate:
             result['input_ids'] = [v + self.smiles_offset for v in result['input_ids']]
@@ -287,11 +289,18 @@ def get_tokenizers(args):
         enc_tokenizer = SmilesTextTokenizer(text_tokenizer, smiles_tokenizer)
     else:
         raise ValueError
-    # Decoder
-    if args.task == 'condition':
-        dec_tokenizer = ReactionConditionTokenizer(args.vocab_file)
-    elif args.task == 'retro':
-        dec_tokenizer = SmilesTokenizer(args.vocab_file)
+    if args.template_based:
+        assert args.encoder_tokenizer.startswith('smiles')
+        atom_templates = pd.read_csv(os.path.join(args.template_path, 'atom_templates.csv'))['Template']
+        bond_templates = pd.read_csv(os.path.join(args.template_path, 'bond_templates.csv'))['Template']
+        dec_tokenizer = atom_templates, bond_templates
     else:
-        raise ValueError
+        assert args.template_path is None
+        # Decoder
+        if args.task == 'condition':
+            dec_tokenizer = ReactionConditionTokenizer(args.vocab_file)
+        elif args.task == 'retro':
+            dec_tokenizer = SmilesTokenizer(args.vocab_file)
+        else:
+            raise ValueError
     return enc_tokenizer, dec_tokenizer
