@@ -4,7 +4,8 @@ NUM_GPUS_PER_NODE=4
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/condition/rxntext_nn3_mlm_ep20
+SAVE_PATH=output/RCR_textreact
+CACHE_PATH=.cache/
 
 mkdir -p ${SAVE_PATH}
 
@@ -13,14 +14,14 @@ NCCL_P2P_DISABLE=1 python main.py \
     --encoder allenai/scibert_scivocab_uncased \
     --decoder textreact/configs/bert_l6.json \
     --encoder_pretrained \
-    --data_path data/USPTO_condition/ \
-    --train_file USPTO_condition_train.csv \
-    --valid_file USPTO_condition_val.csv \
-    --test_file USPTO_condition_test.csv \
+    --data_path data/RCR/ \
+    --train_file train.csv \
+    --valid_file val.csv \
+    --test_file test.csv \
     --vocab_file textreact/vocab/vocab_condition.txt \
     --corpus_file data/USPTO_rxn_corpus.csv \
-    --cache_path /scratch/yujieq/textreact/ \
-    --nn_path ../tevatron/output/condition_b512_ep50 \
+    --cache_path ${CACHE_PATH} \
+    --nn_path data/Tevatron_output/RCR/ \
     --train_nn_file train_rank.json \
     --valid_nn_file val_rank.json \
     --test_nn_file test_rank.json \

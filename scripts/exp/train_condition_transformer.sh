@@ -4,7 +4,7 @@ NUM_GPUS_PER_NODE=2
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/condition/rxn_scibert_aug_ep20
+SAVE_PATH=output/RCR_transformer
 
 mkdir -p ${SAVE_PATH}
 
@@ -13,10 +13,10 @@ NCCL_P2P_DISABLE=1 python main.py \
     --encoder allenai/scibert_scivocab_uncased \
     --decoder textreact/configs/bert_l6.json \
     --encoder_pretrained \
-    --data_path data/USPTO_condition/ \
-    --train_file USPTO_condition_train.csv \
-    --valid_file USPTO_condition_val.csv \
-    --test_file USPTO_condition_test.csv \
+    --data_path data/RCR/ \
+    --train_file train.csv \
+    --valid_file val.csv \
+    --test_file test.csv \
     --vocab_file textreact/vocab/vocab_condition.txt \
     --save_path ${SAVE_PATH} \
     --max_length 256 \

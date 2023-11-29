@@ -4,7 +4,8 @@ NUM_GPUS_PER_NODE=4
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/condition_year/condition_year_nn3_mlm_ep20
+SAVE_PATH=output/RCR_TS_textreact
+CACHE_PATH=.cache/
 
 mkdir -p ${SAVE_PATH}
 
@@ -13,17 +14,17 @@ NCCL_P2P_DISABLE=1 python main.py \
     --encoder allenai/scibert_scivocab_uncased \
     --decoder textreact/configs/bert_l6.json \
     --encoder_pretrained \
-    --data_path data/USPTO_condition_year/ \
-    --train_file USPTO_condition_train.csv \
-    --valid_file USPTO_condition_val.csv \
-    --test_file USPTO_condition_test.csv \
+    --data_path data/RCR_TS/ \
+    --train_file train.csv \
+    --valid_file val.csv \
+    --test_file test.csv \
     --vocab_file textreact/vocab/vocab_condition.txt \
     --corpus_file data/USPTO_rxn_corpus.csv \
-    --cache_path /scratch/yujieq/textreact/ \
-    --nn_path ../tevatron/output/condition_year_b512_ep50 \
+    --cache_path ${CACHE_PATH} \
+    --nn_path data/Tevatron_output/RCR_TS/ \
     --train_nn_file train_rank.json \
     --valid_nn_file val_rank.json \
-    --test_nn_file test_rank.json \
+    --test_nn_file test_rank_full.json \
     --num_neighbors 3 \
     --use_gold_neighbor \
     --save_path ${SAVE_PATH} \
@@ -39,9 +40,3 @@ NCCL_P2P_DISABLE=1 python main.py \
     --num_beams 15 \
     --precision 16-mixed \
     --gpus ${NUM_GPUS_PER_NODE}
-
-# --nn_path retrieve/rxnfp_l2/USPTO_condition_year/ \
-#    --corpus_file data/USPTO_condition_year/corpus_before2015.csv \
-#    --train_nn_file train_rank.json \
-#    --valid_nn_file val_rank.json \
-#    --test_nn_file test_rank.json \

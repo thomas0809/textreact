@@ -4,7 +4,8 @@ NUM_GPUS_PER_NODE=4
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/retro_year/retro_year_prdtext_ep200
+SAVE_PATH=output/RetroSyn_TS_textreact
+CACHE_PATH=.cache/
 
 mkdir -p ${SAVE_PATH}
 
@@ -14,16 +15,16 @@ NCCL_P2P_DISABLE=1 python main.py \
     --decoder textreact/configs/bert_l6.json \
     --encoder_pretrained \
     --vocab_file textreact/vocab/vocab_smiles.txt \
-    --data_path data/USPTO_50K_year \
+    --data_path data/RetroSyn_TS/ \
     --train_file train.csv \
     --valid_file valid.csv \
     --test_file test.csv \
     --corpus_file data/USPTO_rxn_corpus.csv \
-    --cache_path /scratch/yujieq/textreact/ \
-    --nn_path ../tevatron/output/retro_year_b512_ep400 \
+    --cache_path ${CACHE_PATH} \
+    --nn_path data/Tevatron_output/RetroSyn_TS/ \
     --train_nn_file train_rank.json \
     --valid_nn_file valid_rank.json \
-    --test_nn_file test_rank.json \
+    --test_nn_file test_rank_full.json \
     --num_neighbors 3 \
     --use_gold_neighbor \
     --random_neighbor_ratio 0.2 \

@@ -4,7 +4,7 @@ NUM_GPUS_PER_NODE=2
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/retro/transformer_ep200
+SAVE_PATH=output/RetroSyn_transformer
 
 mkdir -p ${SAVE_PATH}
 
@@ -13,7 +13,7 @@ NCCL_P2P_DISABLE=1 python main.py \
     --encoder textreact/configs/bert_l6.json \
     --decoder textreact/configs/bert_l6.json \
     --vocab_file textreact/vocab/vocab_smiles.txt \
-    --data_path data/USPTO_50K/processed \
+    --data_path data/RetroSyn/ \
     --train_file train.csv \
     --valid_file valid.csv \
     --test_file test.csv \
