@@ -3,6 +3,8 @@
 This repository contains the code for TextReact, a novel method that directly augments predictive chemistry with 
 text retrieval.
 
+![](assets/textreact.png)
+
 ```
 @inproceedings{TextReact,
   author    = {Qian, Yujie and 
@@ -34,9 +36,14 @@ cd data
 unzip '*'
 ```
 
-## Training and evaluation
+## Training Scripts
 
-The training scripts are located under `scripts/exp/`.
+TextReact consists of two modules: SMILES-To-text retriever and 
+text-augmented predictor. This repository only contains the code for 
+training the predictor, while the code for retriever is available in
+a separate repository: https://github.com/thomas0809/tevatron.
+
+The training scripts are located under [`scripts`](scripts).
 The naming format of the scripts is `train_TASK_MODEL.sh` where
 where:
 - `TASK` specifies the task to train the model on:
