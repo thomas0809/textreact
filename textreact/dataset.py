@@ -148,6 +148,8 @@ class ReactionConditionDataset(BaseDataset):
     def prepare_encoder_input(self, idx):
         row = self.data_df.iloc[idx]
         rxn_smiles = row['canonical_rxn']
+        if self.args.no_smiles:
+            rxn_smiles = ''
         # Data augmentation
         if self.split == 'train' and self.args.shuffle_smiles:
             rxn_smiles = random_shuffle_reaction_smiles(rxn_smiles)
@@ -191,6 +193,8 @@ class RetrosynthesisDataset(BaseDataset):
         # Data augmentation
         if self.split == 'train' and self.args.shuffle_smiles:
             product_smiles = random_smiles(product_smiles)
+        if self.args.no_smiles:
+            product_smiles = ''
         nn_text = self.get_neighbor_text(idx) if self.args.num_neighbors > 0 else None
         enc_input = self.enc_tokenizer(
             product_smiles, text_pair=nn_text, truncation=False, return_token_type_ids=False, verbose=False)
@@ -299,6 +303,8 @@ def random_smiles(smiles):
 
 def random_shuffle_reaction_smiles(rxn_smiles, p=0.8):
     if random.random() > p:
+        return rxn_smiles
+    if '>>' not in rxn_smiles:
         return rxn_smiles
     reactant_str, product_str = rxn_smiles.split('>>')
     reactants = [random_smiles(smiles) for smiles in reactant_str.split('.')]

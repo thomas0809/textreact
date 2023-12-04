@@ -1,1 +1,0 @@
-`dataset/source_dataset/reaxys_total_syn_merge_Preparation_clean_up_mapped.csv` 来自于从Reaxys中抽取出来的全合成文献数据，全合成文献doi号与reaxys查询脚本见`data/reaxys_script/qurey_file.zip`

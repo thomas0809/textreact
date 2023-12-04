@@ -1,32 +1,33 @@
 # TextReact
 
-This is the repository for TextReact, a predictive chemistry model that leverages text retrieval
-from USPTO patents to recommend reaction conditions for reactions
-and suggest reactants for synthesizing target products.
-
-![TextReact](assets/example.png)
+This repository contains the code for TextReact, a novel method that directly augments predictive chemistry with 
+text retrieval.
 
 ```
-@article{qian2022textreact,
-  title={Predictive Chemistry Augmented with Text Retrieval},
-  author={Qian, Yujie and Li, Zhening and Tu, Zhengkai and Coley, Connor W and Barzilay, Regina},
-  journal={Empirical Methods in Natural Language Processing (EMNLP)},
-  year={2023}
+@inproceedings{TextReact,
+  author    = {Qian, Yujie and 
+               Li, Zhening and 
+               Tu, Zhengkai and 
+               Coley, Connor W and 
+               Barzilay, Regina},
+  title     = {Predictive Chemistry Augmented with Text Retrieval},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural
+                Language Processing, Singapore, December 6 - 10, 2023},
+  publisher = {Association for Computational Linguistics},
+  year      = {2018},
 }
 ```
 
-## Setup
-
-Run the following command to download the repository and install the required dependencies:
+## Requirements
+We implement the code with `torch==1.11.0`, `pytorch-lightning==2.0.0`, and `transformers==4.27.3`. 
+To reproduce our experiments, we recommend creating a conda environment with the same dependencies:
+```bash
+conda env create -f environment.yml -n textreact
 ```
-git clone git@github.com:thomas0809/textreact.git
-cd textreact
-python -r requirements.txt
-```
-In addition, install PyTorch 1.12 following [these instructions](https://pytorch.org/get-started/previous-versions/)
-as well as Faiss 1.7.4 following [these instructions](https://github.com/facebookresearch/faiss/blob/35dac924d132f97986df05a2e11905d945ba9a2c/INSTALL.md).
 
-Run the following commands to download and unzip the preprocessed USPTO and USPTO-50K datasets:
+## Data
+
+Run the following commands to download and unzip the preprocessed datasets:
 ```
 git clone https://huggingface.co/datasets/yujieq/TextReact data
 cd data

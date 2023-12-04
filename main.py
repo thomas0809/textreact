@@ -58,6 +58,7 @@ def get_args(notebook=False):
     parser.add_argument('--max_dec_length', type=int, default=128)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--shuffle_smiles', action='store_true')
+    parser.add_argument('--no_smiles', action='store_true')
     parser.add_argument('--num_neighbors', type=int, default=-1)
     parser.add_argument('--use_gold_neighbor', action='store_true')
     parser.add_argument('--max_num_neighbors', type=int, default=10)
