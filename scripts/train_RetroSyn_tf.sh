@@ -4,7 +4,7 @@ NUM_GPUS_PER_NODE=4
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/RetroSyn_textreact
+SAVE_PATH=output/RetroSyn_tf_textreact
 NN_PATH=data/Tevatron_output/RetroSyn/
 
 mkdir -p ${SAVE_PATH}
@@ -36,8 +36,8 @@ NCCL_P2P_DISABLE=1 python main.py \
     --batch_size $((BATCH_SIZE / NUM_GPUS_PER_NODE / ACCUM_STEP)) \
     --gradient_accumulation_steps ${ACCUM_STEP} \
     --test_batch_size 32 \
-    --epochs 200 \
-    --eval_per_epoch 25 \
+    --epochs 1 \
+    --eval_per_epoch 1 \
     --warmup 0.02 \
     --do_train --do_valid --do_test \
     --num_beams 20 \

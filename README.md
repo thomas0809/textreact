@@ -41,26 +41,26 @@ unzip '*'
 
 TextReact consists of two modules: SMILES-To-text retriever and 
 text-augmented predictor. This repository only contains the code for 
-training the predictor, while the code for retriever is available in
+training the predictor, while the code for the retriever is available in
 a separate repository: https://github.com/thomas0809/tevatron.
 
-The training scripts are located under [`scripts`](scripts).
-They are:
-* [`train_RCR.sh`](scripts/train_RCR.sh) for training a model for reaction condition recommendation (RCR)
-on the random split of the dataset.
-* [`train_RCR_TS.sh`](scripts/train_RCR_TS.sh) for training a model for RCR
-on the time-based split of the dataset.
-* [`train_RetroSyn.sh`](scripts/train_RetroSyn.sh) for training a model for retrosynthesis
-on the random split of the dataset.
-* [`train_RetroSyn_TS.sh`](scripts/train_RetroSyn_TS.sh) for training a model for retrosynthesis
+The training scripts are located under [`scripts`](scripts):
+* [`train_RCR.sh`](scripts/train_RCR.sh) trains a model for reaction condition recommendation (RCR)
+on the random split of the USPTO dataset.
+* [`train_RetroSyn_tf.sh`](scripts/train_RetroSyn_tf.sh) trains a template-free model for retrosynthesis
+on the random split of the USPTO-50K dataset.
+* [`train_RetroSyn_tb.sh`](scripts/train_RetroSyn_tb.sh) trains a template-based model for retrosynthesis
+on the random split of the USPTO-50K dataset.
+In addition, [`train_RCR_TS.sh`](scripts/train_RCR_TS.sh), [`train_RetroSyn_tf_TS.sh`](scripts/train_RetroSyn_tf_TS.sh)
+and [`train_RetroSyn_tb_TS.sh`](scripts/train_RetroSyn_tb_TS.sh) train the corresponding models
 on the time-based split of the dataset.
 
 If you're working on a distributed file system, it is recommended to
 add to the script a `--cache_path` option specifying a local path to reduce network time.
 
-To run the script `scripts/train_TASK_SPLIT.sh`, use the following command at the root of the folder:
+To run the script `scripts/train_MODEL.sh`, run the following command at the root of the folder:
 ```
-bash scripts/train_TASK_SPLIT.sh
+bash scripts/train_MODEL.sh
 ```
 
 At the end of training, two dictionaries are printed with the top-k test accuracies.

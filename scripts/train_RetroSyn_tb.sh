@@ -4,27 +4,29 @@ NUM_GPUS_PER_NODE=4
 BATCH_SIZE=128
 ACCUM_STEP=1
 
-SAVE_PATH=output/RetroSyn_TS_textreact
-NN_PATH=data/Tevatron_output/RetroSyn_TS/
+SAVE_PATH=output/RetroSyn_tb_textreact
+NN_PATH=data/Tevatron_output/RetroSyn/
 
 mkdir -p ${SAVE_PATH}
 
 NCCL_P2P_DISABLE=1 python main.py \
     --task retro \
+    --template_based \
+    --shuffle_smiles \
     --encoder allenai/scibert_scivocab_uncased \
-    --decoder textreact/configs/bert_l6.json \
     --encoder_pretrained \
+    --encoder_tokenizer smiles_text \
     --vocab_file textreact/vocab/vocab_smiles.txt \
-    --data_path data/RetroSyn_TS/ \
+    --data_path data/RetroSyn/ \
+    --template_path data/RetroSyn/template_based \
     --train_file train.csv \
     --valid_file valid.csv \
     --test_file test.csv \
     --corpus_file data/USPTO_rxn_corpus.csv \
-    --nn_path data/Tevatron_output/RetroSyn_TS/ \
     --nn_path ${NN_PATH} \
     --train_nn_file train_rank.json \
-    --valid_nn_file valid_rank_full.json \
-    --test_nn_file test_rank_full.json \
+    --valid_nn_file valid_rank.json \
+    --test_nn_file test_rank.json \
     --num_neighbors 3 \
     --use_gold_neighbor \
     --random_neighbor_ratio 0.2 \
@@ -38,7 +40,7 @@ NCCL_P2P_DISABLE=1 python main.py \
     --gradient_accumulation_steps ${ACCUM_STEP} \
     --test_batch_size 32 \
     --epochs 200 \
-    --eval_per_epoch 25 \
+    --eval_per_epoch 10 \
     --warmup 0.02 \
     --do_train --do_valid --do_test \
     --num_beams 20 \
