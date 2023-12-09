@@ -17,7 +17,7 @@ NCCL_P2P_DISABLE=1 python main.py \
     --vocab_file textreact/vocab/vocab_smiles.txt \
     --data_path data/RetroSyn/ \
     --train_file train.csv \
-    --valid_file val.csv \
+    --valid_file valid.csv \
     --test_file test.csv \
     --corpus_file data/USPTO_rxn_corpus.csv \
     --nn_path ${NN_PATH} \
