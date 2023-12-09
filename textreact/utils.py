@@ -1,9 +1,12 @@
 import json
 import os
 
+import numpy as np
 import torch
 import torch.nn as nn
 import logging
+
+from rdkit import Chem
 
 
 metric_to_mode = {
@@ -67,3 +70,49 @@ def gather_prediction_each_neighbor(prediction, num_neighbors):
             for key in results[idx]:
                 results[idx][key] += pred[key]
     return results
+
+
+""" Adapted from localretro_model/get_edit.py """
+
+def get_id_template(a, class_n, num_atoms, edit_type, python_numbers=False):
+    edit_idx = a // class_n
+    template = a % class_n
+    if edit_type == 'b':
+        edit_idx = (edit_idx // num_atoms, edit_idx % num_atoms)
+    if python_numbers:
+        edit_idx = edit_idx.item() if edit_type == 'a' else (edit_idx[0].item(), edit_idx[1].item())
+        template = template.item()
+    return edit_idx, template
+
+def output2edit(out, top_num, edit_type, bonds=None):
+    num_atoms, class_n = out.shape[-2:]
+    readout = out.cpu().detach().numpy()
+    readout = readout.reshape(-1)
+    output_rank = np.flip(np.argsort(readout))
+    filtered_output_rank = []
+    for r in output_rank:
+        edit_idx, template = get_id_template(r, class_n, num_atoms, edit_type)
+        if (bonds is None or edit_idx in bonds) and template != 0:
+            filtered_output_rank.append(r)
+            if len(filtered_output_rank) == top_num:
+                break
+    selected_edit = [get_id_template(a, class_n, num_atoms, edit_type, python_numbers=True) for a in filtered_output_rank]
+    selected_proba = [readout[a].item() for a in filtered_output_rank]
+     
+    return selected_edit, selected_proba
+    
+def combined_edit(atom_out, bond_out, bonds, top_num=None):
+    edit_id_a, edit_proba_a = output2edit(atom_out, top_num, edit_type='a')
+    edit_id_b, edit_proba_b = output2edit(bond_out, top_num, edit_type='b', bonds=bonds)
+    edit_id_c = edit_id_a + edit_id_b
+    edit_type_c = ['a'] * len(edit_proba_a) + ['b'] * len(edit_proba_b)
+    edit_proba_c = edit_proba_a + edit_proba_b
+    edit_rank_c = np.flip(np.argsort(edit_proba_c))
+    if top_num is not None:
+        edit_rank_c = edit_rank_c[:top_num]
+    edit_preds_c = [(edit_type_c[r], *edit_id_c[r]) for r in edit_rank_c]
+    # edit_id_c = [edit_id_c[r] for r in edit_rank_c]
+    edit_proba_c = [edit_proba_c[r] for r in edit_rank_c]
+    
+    # return edit_type_c, edit_id_c, edit_proba_c
+    return edit_preds_c, edit_proba_c
