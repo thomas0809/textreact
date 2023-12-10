@@ -153,7 +153,6 @@ class BaseDataset(Dataset):
 
     def print_example(self, idx=0):
         idx, inputs, outputs = self.__getitem__(idx, debug=True)
-        # print(inputs)
         print(self.enc_tokenizer.decode(inputs['input_ids']))
         if self.args.template_based:
             print(inputs['atom_indices'])
@@ -200,9 +199,7 @@ class RetrosynthesisDataset(BaseDataset):
         self.template_based = args.template_based
         if self.template_based:
             template_data_df = pd.read_csv(os.path.join(args.template_path, f"preprocessed_{split}.csv"))
-            # self.template_data = {row["id"]: eval(row["Labels"]) for _, row in template_data_df.iterrows()}
             self.template_data = [eval(row["Labels"]) for _, row in template_data_df.iterrows()]
-            # self.product_canon_perms = [eval(row["ProductCanonPerms"]) for _, row in template_data_df.iterrows()]
             self.product_atomidx2canonidx = [eval(row["ProductAtomIdx2CanonIdx"]) for _, row in template_data_df.iterrows()]
             self.product_canon_bonds = [eval(row["ProductCanonBonds"]) for _, row in template_data_df.iterrows()]
             self.unattend_nonbonds = args.unattend_nonbonds

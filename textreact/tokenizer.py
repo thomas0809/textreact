@@ -251,7 +251,6 @@ class SmilesTextTokenizer(PreTrainedTokenizer):
         return len(self.text_tokenizer) + self.smiles_offset
 
     def __call__(self, text, text_pair, **kwargs):
-        # TODO check if input actually makes sense
         result = self.smiles_tokenizer(text, **kwargs)
         if self.separate:
             result['input_ids'] = [v + self.smiles_offset for v in result['input_ids']]

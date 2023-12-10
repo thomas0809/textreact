@@ -28,19 +28,8 @@ def get_pred_smiles_from_templates(template_preds, product, atom_templates, bond
             if decoded_smiles == None or decoded_smiles in smiles_preds:
                 continue
         except Exception as e:
-#                     print (e)
             continue
         smiles_preds.append(decoded_smiles)
-
-        # if args['rxn_class_given']:
-        #     rxn_class = args['test_rxn_class'][test_id]
-        #     if template in args['templates_class'][str(rxn_class)].values:
-        #         class_prediction.append(str((decoded_smiles, score)))
-        #     if len (class_prediction) >= args['top_k']:
-        #         break
-
-        # elif len (smiles_preds) >= args['top_k']:
-        #     break
 
         if len (smiles_preds) >= top_k:
             break
@@ -204,11 +193,5 @@ def decode_localtemplate(product, pred_site, template, template_info):
                 continue
             else:
                 return demap(decoded)
-    # print('product:', Chem.MolToSmiles(product))
-    # print('pred_site:', pred_site)
-    # print('template:', template)
-    # print('template_info:', template_info)
-    # print('possible_maps:', possible_maps)
-    # print('reactants:', reactants)
     return None
 

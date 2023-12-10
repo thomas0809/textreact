@@ -44,14 +44,6 @@ def expand_word_embeddings(encoder, vocab_size):
     embeddings.word_embeddings.weight.data[:old_emb.size(0)] = old_emb
 
 
-# def share_embedding(model):
-#     if model.decoder.config.model_type == 'roberta':
-#         model.decoder.roberta.embeddings.word_embeddings.weight = model.encoder.embeddings.word_embeddings.weight
-#         model.decoder.lm_head.decoder.weight = model.encoder.embeddings.word_embeddings.weight
-#     else:
-#         raise NotImplementedError
-
-
 def clear_path(path, trainer):
     for file in os.listdir(path):
         if file.endswith('.ckpt'):
@@ -111,8 +103,6 @@ def combined_edit(atom_out, bond_out, bonds, top_num=None):
     if top_num is not None:
         edit_rank_c = edit_rank_c[:top_num]
     edit_preds_c = [(edit_type_c[r], *edit_id_c[r]) for r in edit_rank_c]
-    # edit_id_c = [edit_id_c[r] for r in edit_rank_c]
     edit_proba_c = [edit_proba_c[r] for r in edit_rank_c]
     
-    # return edit_type_c, edit_id_c, edit_proba_c
     return edit_preds_c, edit_proba_c

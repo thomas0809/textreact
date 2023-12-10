@@ -244,7 +244,6 @@ class ReactionConditionRecommender(LightningModule):
                                        f'prediction_{self.test_dataset.name}_{dataloader_idx}.json'), 'w') as f:
                     json.dump(test_outputs, f)
                 # Evaluate
-                print("Evaluation begins...")
                 if self.args.task == 'condition':
                     accuracy = evaluate_reaction_condition(test_outputs, self.test_dataset.data_df)
                 elif self.args.task == 'retro':
@@ -253,7 +252,6 @@ class ReactionConditionRecommender(LightningModule):
                                                        template_path=self.args.template_path)
                 else:
                     accuracy = []
-                print("Evaluation complete!")
                 self.print(self.ckpt_path)
                 self.print(accuracy)
                 self.print(json.dumps(accuracy))
