@@ -253,7 +253,6 @@ class ReactionConditionRecommender(LightningModule):
                 else:
                     accuracy = []
                 self.print(self.ckpt_path)
-                self.print(accuracy)
                 self.print(json.dumps(accuracy))
         self.test_outputs.clear()
 
