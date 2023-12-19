@@ -430,14 +430,13 @@ def random_smiles(smiles):
 
 
 def random_shuffle_reaction_smiles(rxn_smiles, p=0.8):
-    raise NotImplementedError()
     if random.random() > p:
         return rxn_smiles
     if '>>' not in rxn_smiles:
         return rxn_smiles
     reactant_str, product_str = rxn_smiles.split('>>')
-    reactants = [random_smiles(smiles) for smiles in reactant_str.split('.')]
-    products = [random_smiles(smiles) for smiles in product_str.split('.')]
+    reactants = [random_smiles(smiles)[0] for smiles in reactant_str.split('.')]
+    products = [random_smiles(smiles)[0] for smiles in product_str.split('.')]
     random.shuffle(reactants)
     random.shuffle(products)
     return '.'.join(reactants) + '>>' + '.'.join(products)
