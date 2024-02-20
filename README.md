@@ -1,22 +1,24 @@
 # TextReact
 
-This repository contains the code for TextReact, a novel method that directly augments predictive chemistry with 
-text retrieval.
+This repository contains the code for [TextReact](https://aclanthology.org/2023.emnlp-main.784/), a novel method that directly augments 
+predictive chemistry with text retrieval.
 
 ![](assets/textreact.png)
 
 ```
 @inproceedings{TextReact,
-  author    = {Qian, Yujie and 
-               Li, Zhening and 
-               Tu, Zhengkai and 
-               Coley, Connor W and 
-               Barzilay, Regina},
-  title     = {Predictive Chemistry Augmented with Text Retrieval},
-  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural
-                Language Processing, Singapore, December 6 - 10, 2023},
-  publisher = {Association for Computational Linguistics},
-  year      = {2018},
+  author       = {Yujie Qian and
+                  Zhening Li and
+                  Zhengkai Tu and
+                  Connor W. Coley and
+                  Regina Barzilay},
+  title        = {Predictive Chemistry Augmented with Text Retrieval},
+  booktitle    = {Proceedings of the 2023 Conference on Empirical Methods in Natural
+                  Language Processing, {EMNLP} 2023, Singapore, December 6-10, 2023},
+  pages        = {12731--12745},
+  publisher    = {Association for Computational Linguistics},
+  year         = {2023},
+  url          = {https://aclanthology.org/2023.emnlp-main.784}
 }
 ```
 
